@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+# Initializes various data structures for a new chess game that track vital information about the state of the game
 def fresh_game_state():
     board = [
         [-2, -3, -4, -5, -6, -4, -3, -2],
@@ -28,9 +29,11 @@ def fresh_game_state():
         'status': ['live']
     }
 
+# Checks if a position exists on the chess board
 def is_valid_square(pos):
     return 0 <= pos[0] <= 7 and 0 <= pos[1] <= 7
 
+# Checks if a position exists on the chess board and a piece of a certain color is currently there
 def is_color(color, pos, board):
     if not is_valid_square(pos):
         return False
@@ -39,9 +42,11 @@ def is_color(color, pos, board):
         return board[pos[0]][pos[1]] > 0
     return board[pos[0]][pos[1]] < 0
 
+# Checks if a position exists on the chess board and no piece currently occupies the square
 def is_empty(pos, board):
     return is_valid_square(pos) and board[pos[0]][pos[1]] == 0
 
+# Returns a list of all the squares that a sliding piece (rook, bishop, or queen) is threatening
 def squares_threatened_by_sliding_piece(directions, pos, board):
     res = []
     for direction in directions:
@@ -56,6 +61,7 @@ def squares_threatened_by_sliding_piece(directions, pos, board):
             distance += 1
     return res
 
+# Returns a list of all the squares that a hopping piece (knight or king) is threatening
 def squares_threatened_by_hopping_piece(movements, pos):
     res = []
     for movement in movements:
@@ -64,6 +70,7 @@ def squares_threatened_by_hopping_piece(movements, pos):
             res.append(possible_addition)
     return res
 
+# Returns a list of every square that a pawn is threatening
 def squares_threatened_by_pawn(color, pos):
     res = []
     if color == 1:
@@ -207,24 +214,6 @@ def execute_move(move, game_state):
         game_state['castling_rights'][opponent_queenside_castling_right_index] = 0
     elif pos_f == [opponent_castling_row_index, 7] and game_state['castling_rights'][opponent_kingside_castling_right_index]:
         game_state['castling_rights'][opponent_kingside_castling_right_index] = 0
-
-    # # Update castling rights when king moves
-    # if what_is_at_pos_i == 6 or what_is_at_pos_i == -6:  # King moved
-    #     game_state['castling_rights'][kingside_castling_right_index] = 0
-    #     game_state['castling_rights'][queenside_castling_right_index] = 0
-
-    # # Update castling rights when rook moves
-    # if what_is_at_pos_i == 2 or what_is_at_pos_i == -2:  # Rook moved
-    #     if pos_i == [castling_row_index, 7]:  # Kingside rook
-    #         game_state['castling_rights'][kingside_castling_right_index] = 0
-    #     elif pos_i == [castling_row_index, 0]:  # Queenside rook
-    #         game_state['castling_rights'][queenside_castling_right_index] = 0
-
-    # # Update opponent's castling rights when their rook is captured
-    # if what_is_at_pos_f == -2 and pos_f == [opponent_castling_row_index, 7]:
-    #     game_state['castling_rights'][opponent_kingside_castling_right_index] = 0
-    # elif what_is_at_pos_f == -2 and pos_f == [opponent_castling_row_index, 0]:
-    #     game_state['castling_rights'][opponent_queenside_castling_right_index] = 0
     
     # Changing en passant square: If your move is a pawn double-jump, set the en passant square accordingly, else set it to None
     if game_state['board'][pos_f[0]][pos_f[1]] == pawn and pos_f[0] == pawn_double_jump_row_index_f and pos_i[0] == pawn_double_jump_row_index_i:
@@ -414,14 +403,14 @@ def legal_moves(board, active_color, castling_rights, en_passant_square, pieces)
                 res += piece_legal_moves([i, j], board, active_color, castling_rights, en_passant_square, pieces)
     return res
 
-# For testing:
-piece_symbols = {
-    1: '♙', 2: '♖', 3: '♘', 4: '♗', 5: '♕', 6: '♔',
-    -1: '♟', -2: '♜', -3: '♞', -4: '♝', -5: '♛', -6: '♚',
-    0: '·'
-}
-def print_chess_board(board):
-    for row in board:
-        row_str = ''.join([piece_symbols[piece] + ' ' for piece in row])
-        print(row_str)
-    print()
+
+
+import random
+from tqdm import tqdm
+
+for i in tqdm(range(1000)):
+    game_state = fresh_game_state()
+    while True:
+        execute_move(random.choice(game_state['legal_moves']), game_state)
+        if game_state['status'][0] != 'live':
+            break

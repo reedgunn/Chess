@@ -56,14 +56,14 @@ def game_state_to_FEN(board, active_color, castling_rights, en_passant_square, h
     return res
 
 
-
-stockfish = Stockfish('/opt/homebrew/bin/stockfish')
-stockfish.set_skill_level(20)
+depth = 5
+stockfish = Stockfish(path='/opt/homebrew/bin/stockfish', depth=depth)
 
 feature_vector_to_evaluation = {}
 
-num_games = 1000
-for i in tqdm(range(num_games), f'Running {num_games} random chess games, collecting and having Stockfish give an evaluation for every position achieved'):
+num_rows_of_data = 2e6
+num_games = int(num_rows_of_data / 75)
+for i in tqdm(range(num_games), f'Running {num_games} random chess games, collecting and having Stockfish give an evaluation at depth {depth} for every position achieved'):
     game_state = fresh_game_state()
     num_halfmoves = 0
     while game_state['status'][0] == 'live' and num_halfmoves < 79:
@@ -76,13 +76,10 @@ for i in tqdm(range(num_games), f'Running {num_games} random chess games, collec
         execute_move(move_to_execute, game_state)
         num_halfmoves += 1
 
-with open('my_chess_data.csv', mode='w', newline='') as file:
+with open('dataset.csv', mode='w', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Chess_Position', 'Evaluation'])
+    writer.writerow(['Feature_Vector', 'Evaluation'])
     for feature_vector, evaluation in feature_vector_to_evaluation.items():
         writer.writerow([feature_vector, evaluation])
 
 print(len(feature_vector_to_evaluation))
-
-
-

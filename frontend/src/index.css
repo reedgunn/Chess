@@ -2,9 +2,9 @@
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
-  height: 100vh;
+  height: 100%;
   width: 100vh;
-  margin: auto;
+  margin: 0 auto;
 }
 
 .square {
