@@ -1,4 +1,3 @@
-/__pycache__
 *.csv
-testing.py
 *.pkl
+testing.py

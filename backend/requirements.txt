@@ -1,0 +1,4 @@
+Flask==3.0.3
+flask-cors==5.0.0
+joblib==1.4.2
+numpy==2.1.2

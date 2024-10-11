@@ -1,0 +1,1 @@
+web: npm install -g concurrently && concurrently "cd backend && gunicorn app:app" "cd frontend && npm start"

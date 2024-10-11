@@ -405,12 +405,12 @@ def legal_moves(board, active_color, castling_rights, en_passant_square, pieces)
 
 
 
-import random
-from tqdm import tqdm
+# import random
+# from tqdm import tqdm
 
-for i in tqdm(range(1000)):
-    game_state = fresh_game_state()
-    while True:
-        execute_move(random.choice(game_state['legal_moves']), game_state)
-        if game_state['status'][0] != 'live':
-            break
+# for i in tqdm(range(1000)):
+#     game_state = fresh_game_state()
+#     while True:
+#         execute_move(random.choice(game_state['legal_moves']), game_state)
+#         if game_state['status'][0] != 'live':
+#             break

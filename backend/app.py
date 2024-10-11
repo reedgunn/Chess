@@ -1,7 +1,6 @@
 from chess_logic import fresh_game_state, execute_move, execute_move_just_for_checking_legality, piece_legal_moves, is_color, legal_moves
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
-from flask import make_response
 import joblib
 import numpy as np
 from copy import deepcopy
