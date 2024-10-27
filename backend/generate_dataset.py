@@ -1,85 +1,61 @@
-from chess_logic import fresh_game_state, execute_move, legal_moves
-import random
+import pandas as pd
+
+print('Reading the imported .csv file...')
+df = pd.read_csv('backend/imported_dataset.csv', nrows=7.2e6)
+
+EVALUATION_MAGNITUDE_THRESHOLD = 901
+
+def should_keep(evaluation):
+    first_char = evaluation[0]
+    if first_char == '#' or first_char == '0':
+        return False
+    return int(evaluation[1:]) < EVALUATION_MAGNITUDE_THRESHOLD
+
 from tqdm import tqdm
-from stockfish import Stockfish
-import csv
+tqdm.pandas()
 
-# rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+print(f'Removing all rows of data where the evaluation is a draw or checkmate, or has magnitude of at least {EVALUATION_MAGNITUDE_THRESHOLD}...')
+df = df[df['Evaluation'].progress_apply(should_keep)]
 
-# Feature vector: for training machine learning models
-# Game state: dictionary of lists for handling state of game and executing moves, etc.
-# FEN: standard format for sending chess positions to APIs, etc.
+print('Removing the plus sign from the positive evaluations...')
+df['Evaluation'] = df['Evaluation'].progress_apply(lambda x : x[1:] if x[0] == '+' else x)
 
-# Need: game_state_to_FEN() and game_state_to_feature_vector()
-
-FEN_cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-FEN_rows = ['8', '7', '6', '5', '4', '3', '2', '1']
-int_piece_to_FEN_piece = {
-    1: 'P', 2: 'R', 3: 'N', 4: 'B', 5: 'Q', 6: 'K',
-    -1: 'p', -2: 'r', -3: 'n', -4: 'b', -5: 'q', -6: 'k',
+FEN_piece_to_int_piece = {
+    'P': 1, 'R': 2, 'N': 3, 'B': 4, 'Q': 5, 'K': 6,
+    'p': -1, 'r': -2, 'n': -3, 'b': -4, 'q': -5, 'k': -6
 }
-def game_state_to_FEN(board, active_color, castling_rights, en_passant_square, halfmoves_since_last_pawn_move_or_capture):
-    res = ''
-    count = 0
-    for row in board:
-        for square in row:
-            if square == 0:
-                count += 1
+FEN_row_to_row_index = {
+    '1': 7, '2': 6, '3': 5, '4': 4, '5': 3, '6': 2, '7': 1, '8': 0
+}
+FEN_col_to_col_index = {
+    'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7
+}
+def FEN_to_feature_vector(FEN):
+    res = [0] * 71
+    board, active_color, castling_rights, en_passant_square = FEN.split()[:4]
+    i = 0
+    for c in board:
+        if c != '/':
+            if c.isdigit():
+                i += int(c)
             else:
-                if count > 0:
-                    res += str(count)
-                    count = 0
-                res += int_piece_to_FEN_piece[square]
-        if count > 0:
-            res += str(count)
-            count = 0
-        res += '/'
-    res = res[:-1]
-    if active_color[0] == 1:
-        res += ' w'
+                res[i] = FEN_piece_to_int_piece[c]
+                i += 1
+    res[64] = 1 if active_color == 'w' else -1
+    res[65] = 1 if 'K' in castling_rights else 0
+    res[66] = 1 if 'Q' in castling_rights else 0
+    res[67] = 1 if 'k' in castling_rights else 0
+    res[68] = 1 if 'q' in castling_rights else 0
+    if en_passant_square != '-':
+        res[69] = FEN_row_to_row_index[en_passant_square[1]]
+        res[70] = FEN_col_to_col_index[en_passant_square[0]]
     else:
-        res += ' b'
-    if castling_rights == [0, 0, 0, 0]:
-        res += ' -'
-    else:
-        res += ' '
-        castling_rights_ = ['K', 'Q', 'k', 'q']
-        for i in range(4):
-            if castling_rights[i]:
-                res += castling_rights_[i]
-    if en_passant_square == [-1, -1]:
-        res += ' -'
-    else:
-        res += ' ' + FEN_cols[en_passant_square[1]] + FEN_rows[en_passant_square[0]]
-    res += ' ' + str(game_state['halfmoves_since_last_pawn_move_or_capture'][0])
-    res += ' 1'
+        res[69], res[70] = -1, -1
     return res
 
+print('Converting the FENs into feature vectors...')
+df['FEN'] = df['FEN'].progress_apply(FEN_to_feature_vector)
+df.rename(columns={'FEN': 'Feature_Vector'}, inplace=True)
 
-depth = 5
-stockfish = Stockfish(path='/opt/homebrew/bin/stockfish', depth=depth)
-
-feature_vector_to_evaluation = {}
-
-num_rows_of_data = 2e6
-num_games = int(num_rows_of_data / 75)
-for i in tqdm(range(num_games), f'Running {num_games} random chess games, collecting and having Stockfish give an evaluation at depth {depth} for every position achieved'):
-    game_state = fresh_game_state()
-    num_halfmoves = 0
-    while game_state['status'][0] == 'live' and num_halfmoves < 79:
-        FEN = game_state_to_FEN(game_state['board'], game_state['active_color'], game_state['castling_rights'], game_state['en_passant_square'], game_state['halfmoves_since_last_pawn_move_or_capture'])
-        stockfish.set_fen_position(FEN)
-        evaluation = stockfish.get_evaluation()['value']
-        # print(f'{FEN} -> {evaluation}')
-        feature_vector_to_evaluation[tuple(game_state['past_positions'][-1])] = evaluation
-        move_to_execute = random.choice(game_state['legal_moves'])
-        execute_move(move_to_execute, game_state)
-        num_halfmoves += 1
-
-with open('dataset.csv', mode='w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['Feature_Vector', 'Evaluation'])
-    for feature_vector, evaluation in feature_vector_to_evaluation.items():
-        writer.writerow([feature_vector, evaluation])
-
-print(len(feature_vector_to_evaluation))
+print('Exporting data to \'dataset.csv\'...')
+df.to_csv('backend/dataset.csv', sep=';', index=False)

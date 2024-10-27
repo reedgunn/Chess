@@ -1,8 +1,12 @@
+body {
+  margin: 0;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
-  height: 100%;
+  height: 100vh;
   width: 100vh;
   margin: 0 auto;
 }
@@ -16,11 +20,11 @@
 }
 
 .light {
-  background-color: rgb(170, 170, 170);
+  background-color: rgb(235, 198, 144);
 }
 
 .dark {
-  background-color: rgb(85, 85, 85);
+  background-color: rgb(129, 75, 48);
 }
 
 .selected {

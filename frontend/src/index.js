@@ -20,62 +20,51 @@ function App() {
     '-6': '/svgs/black-king.svg',
   };
 
-  const [boardMatrix, setBoardMatrix] = useState([]);
+  const [boardVector, setBoardVector] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState([]);
   const [squareSuggestions, setSquareSuggestions] = useState([]);
   const [status, setStatus] = useState([]);
 
-  const fetchBoardMatrix = async () => {
-    const response = await axios.get('http://localhost:5000/api/get-board-state');
-    console.log("Received board state:", response.data);
-    setBoardMatrix(response.data['board-matrix']);
-    setSelectedSquare(response.data['selected-square']);
-    setSquareSuggestions(response.data['square-suggestions']);
-    setStatus(response.data['status']);
-  };
-  
   const squareClicked = async (row_index, col_index) => {
     const response = await axios.post('http://localhost:5000/api/square-clicked', { row_index, col_index });
-    setBoardMatrix(response.data['board-matrix']);
+    setBoardVector(response.data['board-vector']);
     setSelectedSquare(response.data['selected-square']);
     setSquareSuggestions(response.data['square-suggestions']);
     setStatus(response.data['status']);
   };
   
   useEffect(() => {
-    fetchBoardMatrix();
+    squareClicked(-1, -1);
   }, []);
 
-  if (boardMatrix.length == 0) {
+  if (!boardVector || boardVector.length === 0) {
     return <div>Loading...</div>;
   }
 
-  else if (status[0] != 'live') {
-    return <div>{status[0]}</div>;
+  else if (status != 'live') {
+    return <div>{status}</div>;
   }
 
 
   const squares = [];
 
-  for (let row_index = 0; row_index < 8; row_index++) {
-    for (let col_index = 0; col_index < 8; col_index++) {
-      const isLight = (row_index + col_index) % 2 === 0;
-      const isSelected = selectedSquare && selectedSquare[0] === row_index && selectedSquare[1] === col_index;
-      const isSuggested = squareSuggestions && squareSuggestions.some(value => value[0] === row_index && value[1] === col_index);
-  
-      squares.push(
-        <div 
-          key={`${row_index}${col_index}`}
-          className={`square ${isLight ? 'light' : 'dark'}${isSuggested ? ' suggestion' : ''}${isSelected ? ' selected' : ''}`}
-          onClick={() => squareClicked(row_index, col_index)}
-        >
-          {boardMatrix[row_index][col_index] !== 0 && (
-            <img className='piece' src={pieceToSVG[boardMatrix[row_index][col_index]]}/>
-          )}
-        </div>
-      );
-    }
-  }  
+  for (let i = 0; i < 64; i++) {
+    const isLight = (Math.floor(i / 8) + i % 8) % 2 == 0;
+    const isSelected = selectedSquare && selectedSquare[0] == Math.floor(i / 8) && selectedSquare[1] == i % 8;
+    const isSuggested = squareSuggestions && squareSuggestions.some(value => value[0] == Math.floor(i / 8) && value[1] == i % 8);
+
+    squares.push(
+      <div 
+        key={`${i}`}
+        className={`square ${isLight ? 'light' : 'dark'}${isSuggested ? ' suggestion' : ''}${isSelected ? ' selected' : ''}`}
+        onClick={() => squareClicked(Math.floor(i / 8), i % 8)}
+      >
+        {boardVector[i] != 0 && (
+          <img className='piece' src={pieceToSVG[boardVector[i]]}/>
+        )}
+      </div>
+    );
+  }
 
   return <div className='board'>{squares}</div>;
   

@@ -1,60 +1,44 @@
 import pandas as pd
+
+print('Reading \'dataset.csv\' file...')
+df = pd.read_csv('backend/dataset.csv', sep=';')
+
 import numpy as np
+from tqdm import tqdm
+tqdm.pandas()
 import ast
+
+print('Reading feature vectors...')
+X = np.array(df['Feature_Vector'].progress_apply(ast.literal_eval).tolist())
+y = df['Evaluation'].values
+
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error
-import joblib
-from time import time
-import matplotlib.pyplot as plt
-
-# Start the timer
-start_time = time()
-
-# Load the data
-df = pd.read_csv('dataset.csv')
-
-# Prepare the feature matrix and target variable
-X = pd.DataFrame(df['Feature_Vector'].apply(ast.literal_eval).tolist())
-y = df['Evaluation']
-
-# Split the data into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Initialize and train the model
-model = RandomForestRegressor(n_estimators=30, random_state=42)
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor(n_estimators=22, max_depth=62, n_jobs=-1, random_state=42, verbose=3) # Sweet spot: n_estimators=22, max_depth=62, 
+
+from time import time
+import joblib
+
+start_time = time()
+print('Training...')
 model.fit(X_train, y_train)
+joblib.dump(model, 'backend/chess_position_evaluator.pkl')
+print(f'Training time: {(time() - start_time):.5f} seconds')
 
-# Save the model to a file
-joblib.dump(model, 'chess_position_evaluator.pkl')
-
-# Make predictions on the test set
 y_pred = model.predict(X_test)
 
-# Calculate the Mean Absolute Error
-mae = mean_absolute_error(y_test, y_pred)
+from sklearn.metrics import mean_absolute_error
+print(f'Mean absolute error: {mean_absolute_error(y_test, y_pred)}')
 
-# Print out performance metrics
-print(f'Mean Absolute Error: {mae:.2f}')
-print(f'Time elapsed: {(time() - start_time):.2f} seconds')
-
-# --- Matplotlib Visualizations ---
-
-# 1. Plot Actual vs Predicted Values
-plt.figure(figsize=(8, 6))
+import matplotlib.pyplot as plt
+plt.figure(figsize=(8, 8))
+plt.xticks(np.arange(-900, 901, 150))
+plt.yticks(np.arange(-900, 901, 150))
 plt.scatter(y_test, y_pred, alpha=0.5)
-plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], color='red', linestyle='--')  # Perfect predictions line
+plt.plot([-900, 900], [-900, 900], color='red', linestyle='--')
 plt.xlabel('Actual Evaluation')
 plt.ylabel('Predicted Evaluation')
-plt.title('Actual vs Predicted Evaluation')
-plt.show()
-
-# 2. Plot the Error Distribution (Residuals)
-errors = y_test - y_pred
-
-plt.figure(figsize=(8, 6))
-plt.hist(errors, bins=30, edgecolor='black', alpha=0.7)
-plt.xlabel('Prediction Error (Actual - Predicted)')
-plt.ylabel('Frequency')
-plt.title('Distribution of Prediction Errors')
+plt.title('Predicted vs Actual Evaluation')
 plt.show()
