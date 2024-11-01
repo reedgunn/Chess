@@ -1086,16 +1086,16 @@ def displayBoard(pieces):
 def runGames(numGames):
     results = defaultdict(int)
     for i in tqdm(range(numGames)):
-        gameState = getFreshGameState_trackingFeatureVector_trackingFen()
+        gameState = getFreshGameState_trackingFeatureVector()
         numHalfmoves = 0
         while gameState['status'] == 'live' and numHalfmoves != 80:
-            executeMove_trackingFeatureVector_trackingFen(random.choice(tuple(gameState['legalMoves'])), gameState)
+            executeMove_trackingFeatureVector(random.choice(tuple(gameState['legalMoves'])), gameState)
             numHalfmoves += 1
-            print(gameState['Fen'])
-            displayBoard(gameState['currentPosition']['pieces'])
+            # print(gameState['Fen'])
+            # displayBoard(gameState['currentPosition']['pieces'])
         # print(gameState['status'])
     for key, value in results.items():
         print(f'{key}: {value}')
 
 
-# runGames(1)
+runGames(1000)

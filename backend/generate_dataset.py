@@ -1,7 +1,7 @@
 import pandas as pd
 
 print('Reading the imported .csv file...')
-df = pd.read_csv('backend/imported_dataset.csv', nrows=7.2e6)
+df = pd.read_csv('backend/imported_dataset.csv')
 
 EVALUATION_MAGNITUDE_THRESHOLD = 901
 
