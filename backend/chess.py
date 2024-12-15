@@ -1,5 +1,8 @@
 from collections import defaultdict
 from pyrsistent import freeze
+import random
+from tqdm import tqdm
+import time
 
 intPieceToFenPieceBlack = {-1: 'p', -2: 'r', -3: 'n', -4: 'b', -5: 'q', -6: 'k'}
 intPieceToFenPieceWhite = {1: 'P', 2: 'R', 3: 'N', 4: 'B', 5: 'Q', 6: 'K'}
@@ -1062,10 +1065,6 @@ def executeMove_trackingFeatureVector_trackingFen(move, gameState):
 # Debugging section
 ####################
 
-import random
-from tqdm import tqdm
-import time
-
 symbols = {
     0: ' ', -1: '♟', -2: '♜', -3: '♞', -4: '♝', -5: '♛', -6: '♚', 
     1: '♙', 2: '♖', 3: '♘', 4: '♗', 5: '♕', 6: '♔'
@@ -1098,4 +1097,4 @@ def runGames(numGames):
         print(f'{key}: {value}')
 
 
-runGames(1000)
+# runGames(1000)

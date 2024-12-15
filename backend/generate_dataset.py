@@ -1,4 +1,5 @@
 import pandas as pd
+from tqdm import tqdm
 
 print('Reading the imported .csv file...')
 df = pd.read_csv('backend/imported_dataset.csv')
@@ -10,8 +11,6 @@ def should_keep(evaluation):
     if first_char == '#' or first_char == '0':
         return False
     return int(evaluation[1:]) < EVALUATION_MAGNITUDE_THRESHOLD
-
-from tqdm import tqdm
 tqdm.pandas()
 
 print(f'Removing all rows of data where the evaluation is a draw or checkmate, or has magnitude of at least {EVALUATION_MAGNITUDE_THRESHOLD}...')

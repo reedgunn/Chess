@@ -50,7 +50,7 @@ def square_clicked():
                     for move in gameState['legalMoves']:
                         gameState_copy = deepcopy(gameState)
                         executeMove_trackingFeatureVector(move, gameState_copy)
-                        move_to_eval[move] = get_evaluation_at_depth(3, gameState_copy)
+                        move_to_eval[move] = get_evaluation_at_depth(0, gameState_copy)
                     executeMove_trackingFeatureVector(min(move_to_eval, key=move_to_eval.get), gameState)
                 break
     if not move_executed and square_clicked in [move[0] for move in gameState['legalMoves']]:
