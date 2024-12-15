@@ -1,4 +1,4 @@
-from chess import getFreshGameState_trackingFeatureVector, executeMove_trackingFeatureVector
+from chess import getFreshGameState, executeMove
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
@@ -10,7 +10,7 @@ CORS(app)
 
 model = joblib.load('backend/chess_position_evaluator.pkl')
 
-gameState = getFreshGameState_trackingFeatureVector()
+gameState = getFreshGameState()
 square_selected = None
 move_suggestions = None
 square_suggestions = None
@@ -21,12 +21,12 @@ def get_evaluation_at_depth(depth, gameState):
     move_to_eval = {}
     for move in gameState['legalMoves']:
         gameState_copy = deepcopy(gameState)
-        executeMove_trackingFeatureVector(move, gameState_copy)
+        executeMove(move, gameState_copy)
         move_to_eval[move] = model.predict(np.array(gameState_copy['featureVector']).reshape(1, -1))
     if gameState['featureVector'][64] == 1:
-        executeMove_trackingFeatureVector(max(move_to_eval, key=move_to_eval.get), gameState)
+        executeMove(max(move_to_eval, key=move_to_eval.get), gameState)
     else:
-        executeMove_trackingFeatureVector(min(move_to_eval, key=move_to_eval.get), gameState)
+        executeMove(min(move_to_eval, key=move_to_eval.get), gameState)
     return get_evaluation_at_depth(depth - 1, gameState)
 
 @app.route('/api/square-clicked', methods=['POST'])
@@ -40,18 +40,18 @@ def square_clicked():
     if square_selected:
         for move_suggestion in move_suggestions:
             if move_suggestion[1] == square_clicked:
-                executeMove_trackingFeatureVector(move_suggestion, gameState)
+                executeMove(move_suggestion, gameState)
                 square_selected = None
                 move_suggestions = None
                 square_suggestions = None
                 move_executed = True
-                if len(gameState['legalMoves']) != 0:
-                    move_to_eval = {}
-                    for move in gameState['legalMoves']:
-                        gameState_copy = deepcopy(gameState)
-                        executeMove_trackingFeatureVector(move, gameState_copy)
-                        move_to_eval[move] = get_evaluation_at_depth(0, gameState_copy)
-                    executeMove_trackingFeatureVector(min(move_to_eval, key=move_to_eval.get), gameState)
+                # if len(gameState['legalMoves']) != 0:
+                #     move_to_eval = {}
+                #     for move in gameState['legalMoves']:
+                #         gameState_copy = deepcopy(gameState)
+                #         executeMove(move, gameState_copy)
+                #         move_to_eval[move] = get_evaluation_at_depth(0, gameState_copy)
+                #     executeMove(min(move_to_eval, key=move_to_eval.get), gameState)
                 break
     if not move_executed and square_clicked in [move[0] for move in gameState['legalMoves']]:
         square_selected = square_clicked
