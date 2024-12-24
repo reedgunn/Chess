@@ -8,7 +8,7 @@ from copy import deepcopy
 app = Flask(__name__)
 CORS(app)
 
-model = joblib.load('backend/chess_position_evaluator.pkl')
+# model = joblib.load('backend/machine_learning/chess_position_evaluator.pkl')
 
 gameState = getFreshGameState()
 square_selected = None

@@ -6,18 +6,18 @@ import axios from 'axios';
 function App() {
 
   const pieceToSVG = {
-    '1': '/svgs/white-pawn.svg',
-    '2': '/svgs/white-rook.svg',
-    '3': '/svgs/white-knight.svg',
-    '4': '/svgs/white-bishop.svg',
-    '5': '/svgs/white-queen.svg',
-    '6': '/svgs/white-king.svg',
-    '-1': '/svgs/black-pawn.svg',
-    '-2': '/svgs/black-rook.svg',
-    '-3': '/svgs/black-knight.svg',
-    '-4': '/svgs/black-bishop.svg',
-    '-5': '/svgs/black-queen.svg',
-    '-6': '/svgs/black-king.svg',
+    '0': '/svgs/black-rook.svg',
+    '1': '/svgs/black-knight.svg',
+    '2': '/svgs/black-bishop.svg',
+    '3': '/svgs/black-queen.svg',
+    '4': '/svgs/black-king.svg',
+    '5': '/svgs/black-pawn.svg',
+    '7': '/svgs/white-pawn.svg',
+    '8': '/svgs/white-rook.svg',
+    '9': '/svgs/white-knight.svg',
+    '10': '/svgs/white-bishop.svg',
+    '11': '/svgs/white-queen.svg',
+    '12': '/svgs/white-king.svg',
   };
 
   const [boardVector, setBoardVector] = useState(null);
@@ -41,7 +41,7 @@ function App() {
     return <div>Loading...</div>;
   }
 
-  else if (status != 'live') {
+  else if (status != 0) {
     return <div>{status}</div>;
   }
 
@@ -59,7 +59,7 @@ function App() {
         className={`square ${isLight ? 'light' : 'dark'}${isSuggested ? ' suggestion' : ''}${isSelected ? ' selected' : ''}`}
         onClick={() => squareClicked(Math.floor(i / 8), i % 8)}
       >
-        {boardVector[i] != 0 && (
+        {boardVector[i] != 6 && (
           <img className='piece' src={pieceToSVG[boardVector[i]]}/>
         )}
       </div>

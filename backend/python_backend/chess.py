@@ -1,82 +1,165 @@
-##########################
-# Initializing game state:
-##########################
+from copy import deepcopy
 
-pieceOrder = ('rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook')
-def getFreshPieces():
-    res = {}
-    for x in {('black', 0, 1), ('white', 7, 6)}:
-        res[x[0]] = {}
-        for i in range(8):
-            res[x[0]][(x[1], i)] = pieceOrder[i]
-            res[x[0]][(x[2], i)] = 'pawn'
-    return res
 
-encodedPieceOrder = (2, 3, 4, 5, 6, 4, 3, 2)
-def getFreshFeatureVector():
-    res = [0] * 71
-    for x in {(-1, 0, 1), (1, 7, 6)}:
-        for i in range(8):
-            res[x[1] * 8 + i] = encodedPieceOrder[i] * x[0]
-            res[x[2] * 8 + i] = x[0]
-    for i in range(64, 69):
-        res[i] = 1
-    for i in range(69, 71):
-        res[i] = -1
-    return res
+############
+# Constants:
+############
 
-def getFreshGameState():
-    res = {}
-    res['vitals'] = {
-        'pieces': getFreshPieces(),
-        'whoseTurnIsIt': 'white',
-        'castlingRights': {color : {f'{side}side' : True for side in {'king', 'queen'}} for color in {'black', 'white'}},
+ROOK = 0
+KNIGHT = 1
+BISHOP = 2
+QUEEN = 3
+KING = 4
+PAWN = 5
+
+BLACK_ROOK = 0
+BLACK_KNIGHT = 1
+BLACK_BISHOP = 2
+BLACK_QUEEN = 3
+BLACK_KING = 4
+BLACK_PAWN = 5
+EMPTY_SQUARE = 6
+WHITE_PAWN = 7
+WHITE_ROOK = 8
+WHITE_KNIGHT = 9
+WHITE_BISHOP = 10
+WHITE_QUEEN = 11
+WHITE_KING = 12
+
+NOT_APPLICABLE = -1
+
+WHITE = 0
+BLACK = 1
+
+PRESENT = 0
+ABSENT = 1
+
+ROW_8 = 0
+ROW_7 = 1
+ROW_6 = 2
+ROW_5 = 3
+ROW_4 = 4
+ROW_3 = 5
+ROW_2 = 6
+ROW_1 = 7
+
+COLUMN_A = 0
+COLUMN_B = 1
+COLUMN_C = 2
+COLUMN_D = 3
+COLUMN_E = 4
+COLUMN_F = 5
+COLUMN_G = 6
+COLUMN_H = 7
+
+LIVE = 0
+DRAW_BY_50_MOVE_RULE = 1
+DRAW_BY_THREEFOLD_REPETITION = 2
+DRAW_BY_INSUFFICIENT_MATERIAL = 3
+CHECKMATE = 4
+STALEMATE = 5
+
+KINGSIDE_CASTLING_RIGHT_INDEX = 0
+QUEENSIDE_CASTLING_RIGHT_INDEX = 1
+
+
+# 'freshGameState' is to be deepcopied for every new game
+freshGameState = {
+    # 'vitals' contains only all of the information that is relevant when deciding what move to make
+    'vitals': {
+        'pieces': {
+            BLACK: {
+                (ROW_8, COLUMN_A): ROOK, (ROW_8, COLUMN_B): KNIGHT, (ROW_8, COLUMN_C): BISHOP, (ROW_8, COLUMN_D): QUEEN, (ROW_8, COLUMN_E): KING, (ROW_8, COLUMN_F): BISHOP, (ROW_8, COLUMN_G): KNIGHT, (ROW_8, COLUMN_H): ROOK,
+                (ROW_7, COLUMN_A): PAWN, (ROW_7, COLUMN_B): PAWN,   (ROW_7, COLUMN_C): PAWN,   (ROW_7, COLUMN_D): PAWN,  (ROW_7, COLUMN_E): PAWN, (ROW_7, COLUMN_F): PAWN,   (ROW_7, COLUMN_G): PAWN,   (ROW_7, COLUMN_H): PAWN
+            },
+            WHITE: {
+                (ROW_2, COLUMN_A): PAWN, (ROW_2, COLUMN_B): PAWN,   (ROW_2, COLUMN_C): PAWN,   (ROW_2, COLUMN_D): PAWN,  (ROW_2, COLUMN_E): PAWN, (ROW_2, COLUMN_F): PAWN,   (ROW_2, COLUMN_G): PAWN,   (ROW_2, COLUMN_H): PAWN,
+                (ROW_1, COLUMN_A): ROOK, (ROW_1, COLUMN_B): KNIGHT, (ROW_1, COLUMN_C): BISHOP, (ROW_1, COLUMN_D): QUEEN, (ROW_1, COLUMN_E): KING, (ROW_1, COLUMN_F): BISHOP, (ROW_1, COLUMN_G): KNIGHT, (ROW_1, COLUMN_H): ROOK
+            }
+        },
+        'whoseTurnItIs': WHITE,
+        'castlingRights': {
+            WHITE: [
+                # White kingside castling right:
+                PRESENT,
+                # White queenside castling right:
+                PRESENT
+            ],
+            BLACK: [
+                # Black kingside castling right:
+                PRESENT,
+                # Black queenside castling right:
+                PRESENT
+            ]
+        },
         'enPassantSquare': None
-    }
-    res['kingPositions'] = {x[0] : (x[1], 4) for x in {('black', 0), ('white', 7)}}
-    res['featureVector'] = getFreshFeatureVector()
-    res['vitalssSinceLastCaptureOrPawnMove'] = {tuple(res['featureVector']): 1}
-    res['halfmovesSinceLastCaptureOrPawnMove'] = 0
-    res['legalMoves'] = legalMoves(res['vitals'], 'black', res['kingPositions'][res['vitals']['whoseTurnIsIt']])
-    res['status'] = 'live'
-    res['moveNumber'] = 1
-    res['Fen'] = gameStateToFen(res['vitals'], res['halfmovesSinceLastCaptureOrPawnMove'], res['moveNumber'])
-    return res
+    },
+    'kingPositions': { BLACK: (ROW_8, COLUMN_E), WHITE: (ROW_1, COLUMN_E) },
+    'featureVector': [
+        # Board squares (0-63):
+        BLACK_ROOK,   BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN,  BLACK_KING,   BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK,
+        BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,
+        EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+        EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+        EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+        EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE,
+        WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,
+        WHITE_ROOK,   WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN,  WHITE_KING,   WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
+        # Whose turn it is (64):
+        WHITE,
+        # Castling rights: white kingside (65), white queenside (66), black kingside (67), black queenside (68):
+        PRESENT, PRESENT, PRESENT, PRESENT,
+        # En passant square position: row index (69), column index (70):
+        NOT_APPLICABLE, NOT_APPLICABLE
+    ],
+    'vitalssSinceLastCaptureOrPawnMove': {(BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK, WHITE, PRESENT, PRESENT, PRESENT, PRESENT, NOT_APPLICABLE, NOT_APPLICABLE): 1},
+    'halfmovesSinceLastCaptureOrPawnMove': 0,
+    'legalMoves': [((6, 6), (4, 6), None, -1), ((6, 2), (5, 2), None, -1), ((7, 6), (5, 5), None, -1), ((6, 6), (5, 6), None, -1), ((6, 1), (4, 1), None, -1), ((6, 3), (5, 3), None, -1), ((7, 6), (5, 7), None, -1), ((6, 2), (4, 2), None, -1), ((6, 3), (4, 3), None, -1), ((6, 7), (4, 7), None, -1), ((6, 5), (5, 5), None, -1), ((7, 1), (5, 0), None, -1), ((6, 7), (5, 7), None, -1), ((6, 0), (4, 0), None, -1), ((6, 1), (5, 1), None, -1), ((6, 4), (4, 4), None, -1), ((6, 0), (5, 0), None, -1), ((7, 1), (5, 2), None, -1), ((6, 5), (4, 5), None, -1), ((6, 4), (5, 4), None, -1)],
+    'status': LIVE,
+    'moveNumber': 1,
+    'FEN': 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+}
+def getFreshGameState():
+    return deepcopy(freshGameState)
+
+def getOppositeColor(color):
+    return BLACK if color == WHITE else WHITE
 
 
 #############################################
 # Conversion from game state to FEN notation:
 #############################################
 
-blackEncodedPieceToFenPiece = {'pawn': 'p', 'rook': 'r', 'knight': 'n', 'bishop': 'b', 'queen': 'q', 'king': 'k'}
-whiteEncodedPieceToFenPiece = {'pawn': 'P', 'rook': 'R', 'knight': 'N', 'bishop': 'B', 'queen': 'Q', 'king': 'K'}
+blackEncodedPieceToFENPiece = { PAWN: 'p', ROOK: 'r', KNIGHT: 'n', BISHOP: 'b', QUEEN: 'q', KING: 'k' }
+whiteEncodedPieceToFENPiece = { PAWN: 'P', ROOK: 'R', KNIGHT: 'N', BISHOP: 'B', QUEEN: 'Q', KING: 'K' }
 fenRows = ('8', '7', '6', '5', '4', '3', '2', '1')
 fenColumns = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h')
-def gameStateToFen(vitals, halfmovesSinceLastCaptureOrPawnMove, moveNumber):
+encodedColorToFENColor = { WHITE: 'w', BLACK: 'b'}
+def gameStateToFEN(vitals, halfmovesSinceLastCaptureOrPawnMove, moveNumber):
     res = ''
-    for i in range(8):
+    for rowIndex in range(8):
         emptySquaresCount = 0
-        for j in range(8):
-            position = (i, j)
-            if position not in vitals['pieces']['black'] and position not in vitals['pieces']['white']:
+        for columnIndex in range(8):
+            position = (rowIndex, columnIndex)
+            if position not in vitals['pieces'][BLACK] and position not in vitals['pieces'][WHITE]:
                 emptySquaresCount += 1
             else:
                 if emptySquaresCount:
                     res += str(emptySquaresCount)
                     emptySquaresCount = 0
-                if position in vitals['pieces']['black']:
-                    res += blackEncodedPieceToFenPiece[vitals['pieces']['black'][position]]
+                if position in vitals['pieces'][BLACK]:
+                    res += blackEncodedPieceToFENPiece[vitals['pieces'][BLACK][position]]
                 else:
-                    res += whiteEncodedPieceToFenPiece[vitals['pieces']['white'][position]]
+                    res += whiteEncodedPieceToFENPiece[vitals['pieces'][WHITE][position]]
         if emptySquaresCount:
             res += str(emptySquaresCount)
-        if i != 7:
+        if rowIndex != 7:
             res += '/'
-    res += f' {vitals['whoseTurnIsIt'][0]} '
+    res += f' {encodedColorToFENColor[vitals['whoseTurnItIs']]} '
     castlingRights = ''
-    for x in (('white', 'K', 'Q'), ('black', 'k', 'q')):
-        for y in (('king', 1), ('queen', 2)):
-            if vitals['castlingRights'][x[0]][f'{y[0]}side']:
+    for x in ((WHITE, 'K', 'Q'), (BLACK, 'k', 'q')):
+        for y in ((KINGSIDE_CASTLING_RIGHT_INDEX, 1), (QUEENSIDE_CASTLING_RIGHT_INDEX, 2)):
+            if vitals['castlingRights'][x[0]][y[0]]:
                 castlingRights += x[y[1]]
     res += castlingRights if castlingRights else '-'
     res += f' {fenColumns[vitals['enPassantSquare'][1]]}{fenRows[vitals['enPassantSquare'][0]]} ' if vitals['enPassantSquare'] else ' - '
@@ -89,19 +172,7 @@ def gameStateToFen(vitals, halfmovesSinceLastCaptureOrPawnMove, moveNumber):
 ##########################################
 
 def isEmpty(position, pieces):
-    return position not in pieces['black'] and position not in pieces['white']
-
-def getForwardRowIndexChange(color):
-    return 1 if color == 'black' else -1
-
-def squaresThreatenedByPawn(position, color):
-    res = set()
-    forwardRowIndexChange = getForwardRowIndexChange(color)
-    finalRowIndex = position[0] + forwardRowIndexChange
-    for x in {(0, -1), (7, 1)}:
-        if position[1] != x[0]:
-            res.add((finalRowIndex, position[1] + x[1]))
-    return res
+    return position not in pieces[BLACK] and position not in pieces[WHITE]
 
 def squaresThreatenedByRook(position, pieces):
     res = set()
@@ -218,41 +289,50 @@ def squaresThreatenedByKing(position):
         res.add((position[0], rightByOneColumnIndex))
     return res
 
+def squaresThreatenedByPawn(position, color):
+    res = set()
+    forwardRowIndexChange = 1 if color == BLACK else -1
+    finalRowIndex = position[0] + forwardRowIndexChange
+    for columnIndexBound, columnIndexChange in {(0, -1), (7, 1)}:
+        if position[1] != columnIndexBound:
+            res.add((finalRowIndex, position[1] + columnIndexChange))
+    return res
+
+def squaresThreatenedByPiece(piece, position, pieces, color):
+    if piece == PAWN:
+        return squaresThreatenedByPawn(position, color)
+    elif piece == ROOK:
+        return squaresThreatenedByRook(position, pieces)
+    elif piece == KNIGHT:
+        return squaresThreatenedByKnight(position)
+    elif piece == BISHOP:
+        return squaresThreatenedByBishop(position, pieces)
+    elif piece == QUEEN:
+        return squaresThreatenedByQueen(position, pieces)
+    else:
+        return squaresThreatenedByKing(position)
+
 def squaresThreatenedByColor(pieces, color):
     res = set()
     for position, piece in pieces[color].items():
-        if piece == 'pawn':
-            res.update(squaresThreatenedByPawn(position, color))
-        elif piece == 'rook':
-            res.update(squaresThreatenedByRook(position, pieces))
-        elif piece == 'knight':
-            res.update(squaresThreatenedByKnight(position))
-        elif piece == 'bishop':
-            res.update(squaresThreatenedByBishop(position, pieces))
-        elif piece == 'queen':
-            res.update(squaresThreatenedByQueen(position, pieces))
-        else:
-            res.update(squaresThreatenedByKing(position))
+        res.update(squaresThreatenedByPiece(piece, position, pieces, color))
     return res
 
 
 ##########################
-# Calculating legal moves:
+# Legal moves generation:
 ##########################
-
-def getOppositeColor(color):
-    return 'white' if color == 'black' else 'black'
 
 def isColorInCheck(oppositeColor, kingPosition, pieces):
     return kingPosition in squaresThreatenedByColor(pieces, oppositeColor)
 
-# move: (initial position, final position, position of captured piece [or None if the move isn't a capture])
+# move: (initial position, final position, position of captured piece [or None if the move isn't a capture], type of piece to promote to [0-5, or -1 if the move isn't a pawn promotion])
 
 def doesMoveLeaveKingInCheck(move, color, oppositeColor, kingPosition, pieces):
     pieces[color][move[1]] = pieces[color].pop(move[0])
     capturedPiece = pieces[oppositeColor].pop(move[2]) if move[2] else None
     res = isColorInCheck(oppositeColor, kingPosition, pieces)
-    if capturedPiece:
+    if capturedPiece != None:
         pieces[oppositeColor][move[2]] = capturedPiece
     pieces[color][move[0]] = pieces[color].pop(move[1])
     return res
@@ -260,26 +340,6 @@ def doesMoveLeaveKingInCheck(move, color, oppositeColor, kingPosition, pieces):
 def addMoveToResIfDoesntLeaveKingInCheck(res, move, color, oppositeColor, kingPosition, pieces):
     if not doesMoveLeaveKingInCheck(move, color, oppositeColor, kingPosition, pieces):
         res.add(move)
-
-def pawnLegalMoves(position, color, oppositeColor, kingPosition, pieces, enPassantSquare):
-    res = set()
-    doubleJumpStartingRowIndex = 1 if color == 'black' else 6
-    forwardRowIndexChange = getForwardRowIndexChange(color)
-    singleHopFinalPosition = (position[0] + forwardRowIndexChange, position[1])
-    if isEmpty(singleHopFinalPosition, pieces):
-        addMoveToResIfDoesntLeaveKingInCheck(res, (position, singleHopFinalPosition, None), color, oppositeColor, kingPosition, pieces)
-        if position[0] == doubleJumpStartingRowIndex:
-            doubleHopFinalPosition = (position[0] + 2 * forwardRowIndexChange, position[1])
-            if isEmpty(doubleHopFinalPosition, pieces):
-                addMoveToResIfDoesntLeaveKingInCheck(res, (position, doubleHopFinalPosition, None), color, oppositeColor, kingPosition, pieces)
-    for columnIndexChange, columnIndexBound in {(-1, 0), (1, 7)}:
-        if position[1] != columnIndexBound:
-            captureFinalPosition = (singleHopFinalPosition[0], position[1] + columnIndexChange)
-            if captureFinalPosition in pieces[oppositeColor]:
-                addMoveToResIfDoesntLeaveKingInCheck(res, (position, captureFinalPosition, captureFinalPosition), color, oppositeColor, kingPosition, pieces)
-            elif captureFinalPosition == enPassantSquare:
-                addMoveToResIfDoesntLeaveKingInCheck(res, (position, captureFinalPosition, (position[0], captureFinalPosition[1])), color, oppositeColor, kingPosition, pieces)
-    return res
 
 def rookLegalMoves(position, color, oppositeColor, pieces, kingPosition):
     res = set()
@@ -292,21 +352,21 @@ def rookLegalMoves(position, color, oppositeColor, pieces, kingPosition):
                 if possibleAddition in pieces[color]:
                     break
                 if possibleAddition in pieces[oppositeColor]:
-                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, possibleAddition), color, oppositeColor, kingPosition, pieces)
+                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, possibleAddition, -1), color, oppositeColor, kingPosition, pieces)
                     break
                 else:
-                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, None), color, oppositeColor, kingPosition, pieces)
+                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, None, -1), color, oppositeColor, kingPosition, pieces)
                 curPos[posIndexPointer] += positionChange
     return res
 
 def hoppingPieceLegalMoveHelper(res, possibleMoveFinalPosition, possibleMoveInitialPosition, color, oppositeColor, kingPosition, pieces):
     if possibleMoveFinalPosition not in pieces[color]:
         if possibleMoveFinalPosition in pieces[oppositeColor]:
-            addMoveToResIfDoesntLeaveKingInCheck(res, (possibleMoveInitialPosition, possibleMoveFinalPosition, possibleMoveFinalPosition), color, oppositeColor, kingPosition, pieces)
+            addMoveToResIfDoesntLeaveKingInCheck(res, (possibleMoveInitialPosition, possibleMoveFinalPosition, possibleMoveFinalPosition, -1), color, oppositeColor, kingPosition, pieces)
         else:
-            addMoveToResIfDoesntLeaveKingInCheck(res, (possibleMoveInitialPosition, possibleMoveFinalPosition, None), color, oppositeColor, kingPosition, pieces)
+            addMoveToResIfDoesntLeaveKingInCheck(res, (possibleMoveInitialPosition, possibleMoveFinalPosition, None, -1), color, oppositeColor, kingPosition, pieces)
 
-def knightLegalMoves(position, color, oppositeColor, kingPosition, pieces):
+def knightLegalMoves(position, color, oppositeColor, pieces, kingPosition):
     res = set()
     notOnTopEdge = position[0] != 0
     notOnRightEdge = position[1] != 7
@@ -364,10 +424,10 @@ def bishopLegalMoves(position, color, oppositeColor, pieces, kingPosition):
                 if possibleAddition in pieces[color]:
                     break
                 if possibleAddition in pieces[oppositeColor]:
-                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, possibleAddition), color, oppositeColor, kingPosition, pieces)
+                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, possibleAddition, -1), color, oppositeColor, kingPosition, pieces)
                     break
                 else:
-                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, None), color, oppositeColor, kingPosition, pieces)
+                    addMoveToResIfDoesntLeaveKingInCheck(res, (position, possibleAddition, None, -1), color, oppositeColor, kingPosition, pieces)
                 curPos[0] += rowIndexChange
                 curPos[1] += columnIndexChange
     return res
@@ -420,36 +480,77 @@ def kingLegalMoves(position, color, oppositeColor, pieces, castlingRights):
     # Castling:
     squaresThreatenedByOpponent = squaresThreatenedByColor(pieces, oppositeColor)
     if position not in squaresThreatenedByOpponent: # if we aren't currently in check, then we might be able to castle
-        castlingRowIndex = 0 if color == 'black' else 7
-        if castlingRights['kingside']:
+        castlingRowIndex = 0 if color == BLACK else 7
+        if castlingRights[0] == PRESENT:
             squareOneToRightOfKing = (castlingRowIndex, 5)
             if isEmpty(squareOneToRightOfKing, pieces) and squareOneToRightOfKing not in squaresThreatenedByOpponent:
                 squareTwoToRightOfKing = (castlingRowIndex, 6)
                 if isEmpty(squareTwoToRightOfKing, pieces) and squareTwoToRightOfKing not in squaresThreatenedByOpponent:
-                    res.add((position, squareTwoToRightOfKing, None))
-        if castlingRights['queenside']:
+                    res.add((position, squareTwoToRightOfKing, None, -1))
+        if castlingRights[1] == PRESENT:
             squareOneToLeftOfKing = (castlingRowIndex, 3)
             if isEmpty(squareOneToLeftOfKing, pieces) and squareOneToLeftOfKing not in squaresThreatenedByOpponent:
                 squareTwoToLeftOfKing = (castlingRowIndex, 2)
                 if isEmpty(squareTwoToLeftOfKing, pieces) and squareTwoToLeftOfKing not in squaresThreatenedByOpponent and isEmpty((castlingRowIndex, 1), pieces):
-                    res.add((position, squareTwoToLeftOfKing, None))
+                    res.add((position, squareTwoToLeftOfKing, None, -1))
     return res
 
-def legalMoves(vitals, oppositeColor, kingPosition):
+def pawnLegalMoves(position, color, oppositeColor, pieces, kingPosition, enPassantSquare):
     res = set()
-    for position, piece in vitals['pieces'][vitals['whoseTurnIsIt']].copy().items():
-        if piece == 'pawn':
-            res.update(pawnLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, kingPosition, vitals['pieces'], vitals['enPassantSquare']))
-        elif piece == 'rook':
-            res.update(rookLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, vitals['pieces'], kingPosition))
-        elif piece == 'knight':
-            res.update(knightLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, kingPosition, vitals['pieces']))
-        elif piece == 'bishop':
-            res.update(bishopLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, vitals['pieces'], kingPosition))
-        elif piece == 'queen':
-            res.update(queenLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, vitals['pieces'], kingPosition))
-        else:
-            res.update(kingLegalMoves(position, vitals['whoseTurnIsIt'], oppositeColor, vitals['pieces'], vitals['castlingRights'][vitals['whoseTurnIsIt']]))
+    if color == BLACK:
+        doubleJumpStartingRowIndex = 1
+        forwardRowIndexChange = 1
+        promotionRowIndex = 7
+    else:
+        doubleJumpStartingRowIndex = 6
+        forwardRowIndexChange = -1
+        promotionRowIndex = 0
+    singleHopFinalPosition = (position[0] + forwardRowIndexChange, position[1])
+    if isEmpty(singleHopFinalPosition, pieces):
+        possibleSingleJumpMove = (position, singleHopFinalPosition, None, -1)
+        if not doesMoveLeaveKingInCheck(possibleSingleJumpMove, color, oppositeColor, kingPosition, pieces):
+            if singleHopFinalPosition[0] == promotionRowIndex:
+                for pieceType in {ROOK, KNIGHT, BISHOP, QUEEN}:
+                    res.add((position, singleHopFinalPosition, None, pieceType))
+            else:
+                res.add(possibleSingleJumpMove)
+        if position[0] == doubleJumpStartingRowIndex:
+            doubleHopFinalPosition = (position[0] + 2 * forwardRowIndexChange, position[1])
+            if isEmpty(doubleHopFinalPosition, pieces):
+                addMoveToResIfDoesntLeaveKingInCheck(res, (position, doubleHopFinalPosition, None, -1), color, oppositeColor, kingPosition, pieces)
+    for columnIndexChange, columnIndexBound in {(-1, 0), (1, 7)}:
+        if position[1] != columnIndexBound:
+            captureFinalPosition = (singleHopFinalPosition[0], position[1] + columnIndexChange)
+            if captureFinalPosition in pieces[oppositeColor]:
+                possibleRegularCaptureMove = (position, captureFinalPosition, captureFinalPosition, -1)
+                if not doesMoveLeaveKingInCheck(possibleRegularCaptureMove, color, oppositeColor, kingPosition, pieces):
+                    if captureFinalPosition[0] == promotionRowIndex:
+                        for pieceType in {ROOK, KNIGHT, BISHOP, QUEEN}:
+                            res.add((position, captureFinalPosition, captureFinalPosition, pieceType))
+                    else:
+                        res.add(possibleRegularCaptureMove)
+            elif captureFinalPosition == enPassantSquare:
+                addMoveToResIfDoesntLeaveKingInCheck(res, (position, captureFinalPosition, (position[0], captureFinalPosition[1]), -1), color, oppositeColor, kingPosition, pieces)
+    return res
+
+def pieceLegalMoves(piece, res, position, vitals, oppositeColor, kingPosition):
+    if piece == PAWN:
+        return pawnLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], kingPosition, vitals['enPassantSquare'])
+    elif piece == ROOK:
+        return rookLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], kingPosition)
+    elif piece == KNIGHT:
+        return knightLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], kingPosition)
+    elif piece == BISHOP:
+        return bishopLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], kingPosition)
+    elif piece == QUEEN:
+        return queenLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], kingPosition)
+    else:
+        return kingLegalMoves(position, vitals['whoseTurnItIs'], oppositeColor, vitals['pieces'], vitals['castlingRights'][vitals['whoseTurnItIs']])
+
+def legalMoves(vitals, kingPosition, oppositeColor):
+    res = []
+    for position, piece in vitals['pieces'][vitals['whoseTurnItIs']].copy().items():
+        res.extend(pieceLegalMoves(piece, res, position, vitals, oppositeColor, kingPosition))
     return res
 
 
@@ -457,17 +558,21 @@ def legalMoves(vitals, oppositeColor, kingPosition):
 # Executing moves on the game state:
 ####################################
 
+def squarePositionToFeatureVectorIndex(rowIndex, columnIndex):
+    return rowIndex * 8 + columnIndex
+
 def executeMove(move, gameState):
-    if gameState['vitals']['whoseTurnIsIt'] == 'black':
-        color = 'black'
-        oppositeColor = 'white'
+    if gameState['vitals']['whoseTurnItIs'] == BLACK:
+        gameState['moveNumber'] += 1
+        color = BLACK
+        oppositeColor = WHITE
         pieceTypeToEncodedPiece = {
-            'pawn': -1,
-            'rook': -2,
-            'knight': -3,
-            'bishop': -4,
-            'queen': -5,
-            'king': -6
+            ROOK: 0,
+            KNIGHT: 1,
+            BISHOP: 2,
+            QUEEN: 3,
+            KING: 4,
+            PAWN: 5
         }
         promotionRowIndex = 7
         castlingRowIndex = 0
@@ -480,15 +585,15 @@ def executeMove(move, gameState):
         opponentKingsideCastlingRightFeatureVectorIndex = 65
         opponentQueensideCastlingRightFeatureVectorIndex = 66
     else:
-        color = 'white'
-        oppositeColor = 'black'
+        color = WHITE
+        oppositeColor = BLACK
         pieceTypeToEncodedPiece = {
-            'pawn': 1,
-            'rook': 2,
-            'knight': 3,
-            'bishop': 4,
-            'queen': 5,
-            'king': 6
+            PAWN: 7,
+            ROOK: 8,
+            KNIGHT: 9,
+            BISHOP: 10,
+            QUEEN: 11,
+            KING: 12
         }
         promotionRowIndex = 0
         castlingRowIndex = 7
@@ -502,75 +607,72 @@ def executeMove(move, gameState):
         opponentQueensideCastlingRightFeatureVectorIndex = 68
         
     whatIsMoving = gameState['vitals']['pieces'][color].pop(move[0])
-    gameState['featureVector'][move[0][0] * 8 + move[0][1]] = 0
+    gameState['featureVector'][squarePositionToFeatureVectorIndex(move[0][0], move[0][1])] = EMPTY_SQUARE
 
     # Changing halfmovesSinceLastCaptureOrPawnMove: If the move is a capture or a pawn move, set to 0, otherwise increment by 1
-    if move[2] or whatIsMoving == 'pawn':
+    if move[2] or whatIsMoving == PAWN:
         gameState['halfmovesSinceLastCaptureOrPawnMove'] = 0
         gameState['vitalssSinceLastCaptureOrPawnMove'] = {}
     else:
         if gameState['halfmovesSinceLastCaptureOrPawnMove'] == 99:
-            gameState['status'] = 'Draw by 50-move-rule'
+            gameState['status'] = DRAW_BY_50_MOVE_RULE
             return
         gameState['halfmovesSinceLastCaptureOrPawnMove'] += 1
-    
-    # Increment move number
-    if color == 'black':
-        gameState['moveNumber'] += 1
 
     # Changing board state: special cases = [castling, pawn promotion, en passant], default = move the piece
     # For castling, have to move the rook (the king is already moved later):
-    if whatIsMoving == 'king':
+    if whatIsMoving == KING:
         gameState['kingPositions'][color] = move[1]
-        for side in gameState['vitals']['castlingRights'][color]:
-            gameState['vitals']['castlingRights'][color][side] = False
-        for i in {kingsideCastlingRightFeatureVectorIndex, queensideCastlingRightFeatureVectorIndex}:
-            gameState['featureVector'][i] = 0
-        if move == ((castlingRowIndex, 4), (castlingRowIndex, 6), None):
+        for castlingRightIndex in {0, 1}:
+            gameState['vitals']['castlingRights'][color][castlingRightIndex] = ABSENT
+        for sideCastlingRightFeatureVectorIndex in {kingsideCastlingRightFeatureVectorIndex, queensideCastlingRightFeatureVectorIndex}:
+            gameState['featureVector'][sideCastlingRightFeatureVectorIndex] = ABSENT
+        if move == ((castlingRowIndex, 4), (castlingRowIndex, 6), None, -1):
             gameState['vitals']['pieces'][color].pop((castlingRowIndex, 7))
-            gameState['featureVector'][castlingRowIndex * 8 + 7] = 0
-            gameState['vitals']['pieces'][color][(castlingRowIndex, 5)] = 'rook'
-            gameState['featureVector'][castlingRowIndex * 8 + 5] = pieceTypeToEncodedPiece['rook']
-        elif move == ((castlingRowIndex, 4), (castlingRowIndex, 2), None):
+            gameState['featureVector'][squarePositionToFeatureVectorIndex(castlingRowIndex, 7)] = EMPTY_SQUARE
+            gameState['vitals']['pieces'][color][(castlingRowIndex, 5)] = ROOK
+            gameState['featureVector'][squarePositionToFeatureVectorIndex(castlingRowIndex, 5)] = pieceTypeToEncodedPiece[ROOK]
+        elif move == ((castlingRowIndex, 4), (castlingRowIndex, 2), None, -1):
             gameState['vitals']['pieces'][color].pop((castlingRowIndex, 0))
-            gameState['featureVector'][castlingRowIndex * 8] = 0
-            gameState['vitals']['pieces'][color][(castlingRowIndex, 3)] = 'rook'
-            gameState['featureVector'][castlingRowIndex * 8 + 3] = pieceTypeToEncodedPiece['rook']
+            gameState['featureVector'][castlingRowIndex * 8] = EMPTY_SQUARE
+            gameState['vitals']['pieces'][color][(castlingRowIndex, 3)] = ROOK
+            gameState['featureVector'][squarePositionToFeatureVectorIndex(castlingRowIndex, 3)] = pieceTypeToEncodedPiece[ROOK]
     # Handling captures:
     if move[2]:
         gameState['vitals']['pieces'][oppositeColor].pop(move[2])
-        gameState['featureVector'][move[2][0] * 8 + move[2][1]] = 0
+        gameState['featureVector'][squarePositionToFeatureVectorIndex(move[2][0], move[2][1])] = EMPTY_SQUARE
     
-    if whatIsMoving == 'pawn' and move[1][0] == promotionRowIndex:
-        gameState['vitals']['pieces'][color][move[1]] = 'queen'
-        gameState['featureVector'][move[1][0] * 8 + move[1][1]] = pieceTypeToEncodedPiece['queen']
+    if move[3] != -1:
+        gameState['vitals']['pieces'][color][move[1]] = move[3]
+        gameState['featureVector'][squarePositionToFeatureVectorIndex(move[1][0], move[1][1])] = pieceTypeToEncodedPiece[move[3]]
     else:
         gameState['vitals']['pieces'][color][move[1]] = whatIsMoving
-        gameState['featureVector'][move[1][0] * 8 + move[1][1]] = pieceTypeToEncodedPiece[whatIsMoving]
+        gameState['featureVector'][squarePositionToFeatureVectorIndex(move[1][0], move[1][1])] = pieceTypeToEncodedPiece[whatIsMoving]
 
     # Changing castling rights (we already handled the case where we move our king)
     # If you one of your rooks for the first time, need to modify your castling rights
     if move[0] == (castlingRowIndex, 7):
-        gameState['vitals']['castlingRights'][color]['kingside'] = 0
-        gameState['featureVector'][kingsideCastlingRightFeatureVectorIndex] = 0
+        gameState['vitals']['castlingRights'][color][0] = ABSENT
+        gameState['featureVector'][kingsideCastlingRightFeatureVectorIndex] = ABSENT
     elif move[0] == (castlingRowIndex, 0):
-        gameState['vitals']['castlingRights'][color]['queenside'] = 0
-        gameState['featureVector'][queensideCastlingRightFeatureVectorIndex] = 0
+        gameState['vitals']['castlingRights'][color][1] = ABSENT
+        gameState['featureVector'][queensideCastlingRightFeatureVectorIndex] = ABSENT
     # If you capture one of your opponents rooks, possibly need to modify their castling rights
     if move[1] == (opponentCastlingRowIndex, 0):
-        gameState['vitals']['castlingRights'][oppositeColor]['queenside'] = 0
-        gameState['featureVector'][opponentQueensideCastlingRightFeatureVectorIndex] = 0
+        gameState['vitals']['castlingRights'][oppositeColor][1] = ABSENT
+        gameState['featureVector'][opponentQueensideCastlingRightFeatureVectorIndex] = ABSENT
     elif move[1] == (opponentCastlingRowIndex, 7):
-        gameState['vitals']['castlingRights'][oppositeColor]['kingside'] = 0
-        gameState['featureVector'][opponentKingsideCastlingRightFeatureVectorIndex] = 0
+        gameState['vitals']['castlingRights'][oppositeColor][0] = ABSENT
+        gameState['featureVector'][opponentKingsideCastlingRightFeatureVectorIndex] = ABSENT
     
     # Changing en passant square: If your move is a pawn double-jump, set the en passant square accordingly, otherwise set it to None
-    if whatIsMoving == 'pawn' and move[0][0] == pawnDoubleJumpInitialRowIndex and move[1][0] == pawnDoubleJumpFinalRowIndex:
+    if whatIsMoving == PAWN and move[0][0] == pawnDoubleJumpInitialRowIndex and move[1][0] == pawnDoubleJumpFinalRowIndex:
         gameState['vitals']['enPassantSquare'] = (newEnPassantSquareRowIndex, move[1][1])
         gameState['featureVector'][69], gameState['featureVector'][70] = newEnPassantSquareRowIndex, move[1][1]
     else:
         gameState['vitals']['enPassantSquare'] = None
-        gameState['featureVector'][69], gameState['featureVector'][70] = -1, -1
+        for castlingRightIndex in {69, 70}:
+            gameState['featureVector'][castlingRightIndex] = NOT_APPLICABLE
     
     # Check for draw by threefold repetition:
     # "Two positions are by definition 'the same' if the same types of pieces occupy the same squares, the same player 
@@ -578,90 +680,49 @@ def executeMove(move, gameState):
     vitals = tuple(gameState['featureVector'])
     if vitals in gameState['vitalssSinceLastCaptureOrPawnMove']:
         if gameState['vitalssSinceLastCaptureOrPawnMove'][vitals] == 2:
-            gameState['status'] = 'Draw by threefold repetition'
+            gameState['status'] = DRAW_BY_THREEFOLD_REPETITION
             return
         gameState['vitalssSinceLastCaptureOrPawnMove'][vitals] += 1
     else:
         gameState['vitalssSinceLastCaptureOrPawnMove'][vitals] = 1
 
     # Check for draw by insufficient material:
-    blackPieces = gameState['vitals']['pieces']['black'].values()
-    whitePieces = gameState['vitals']['pieces']['white'].values()
+    blackPieces = gameState['vitals']['pieces'][BLACK].values()
+    whitePieces = gameState['vitals']['pieces'][WHITE].values()
     numPieces = len(blackPieces) + len(whitePieces)
-    if numPieces == 4 and len(blackPieces) == 2 and len(whitePieces) == 2 and 'bishop' in blackPieces and 'bishop' in whitePieces:
-        for position, piece in gameState['vitals']['pieces']['white'].items():
-            if piece == 'bishop':
+    if numPieces == 4 and len(blackPieces) == 2 and len(whitePieces) == 2 and BISHOP in blackPieces and BISHOP in whitePieces:
+        for position, piece in gameState['vitals']['pieces'][WHITE].items():
+            if piece == BISHOP:
                 whiteBishopPos = position
                 break
-        for position, piece in gameState['vitals']['pieces']['black'].items():
-            if piece == 'bishop':
+        for position, piece in gameState['vitals']['pieces'][BLACK].items():
+            if piece == BISHOP:
                 blackBishopPos = position
                 break
         if (whiteBishopPos[0] + whiteBishopPos[1]) % 2 == (blackBishopPos[0] + blackBishopPos[1]) % 2:
-            gameState['status'] = 'Draw by insufficient material (king and bishop versus king and bishop with the bishops on the same color)'
+            gameState['status'] = DRAW_BY_INSUFFICIENT_MATERIAL
             return
     elif numPieces == 3:
-        if 'knight' in blackPieces or 'bishop' in blackPieces or 'knight' in whitePieces or 'bishop' in whitePieces:
-            gameState['status'] = 'Draw by insufficient material (king and knight/bishop versus king)'
-            return
+        for pieceType in {KNIGHT, BISHOP}:
+            for colorPieces in {blackPieces, whitePieces}:
+                if pieceType in colorPieces:
+                    gameState['status'] = DRAW_BY_INSUFFICIENT_MATERIAL
+                    return
     elif numPieces == 2:
-        gameState['status'] = 'Draw by insufficient material (king versus king)'
+        gameState['status'] = DRAW_BY_INSUFFICIENT_MATERIAL
         return
 
     # Always change the active color to the opposite of what it currently is
-    gameState['vitals']['whoseTurnIsIt'] = oppositeColor
-    gameState['featureVector'][64] *= -1
+    gameState['vitals']['whoseTurnItIs'] = oppositeColor
+    gameState['featureVector'][64] = oppositeColor
 
-    gameState['Fen'] = gameStateToFen(gameState['vitals'], gameState['halfmovesSinceLastCaptureOrPawnMove'], gameState['moveNumber'])
+    gameState['FEN'] = gameStateToFEN(gameState['vitals'], gameState['halfmovesSinceLastCaptureOrPawnMove'], gameState['moveNumber'])
 
-    gameState['legalMoves'] = legalMoves(gameState['vitals'], color, gameState['kingPositions'][oppositeColor])
+    gameState['legalMoves'] = legalMoves(gameState['vitals'], gameState['kingPositions'][oppositeColor], color)
 
-    if not len(gameState['legalMoves']):
+    if not gameState['legalMoves']:
         if isColorInCheck(color, gameState['kingPositions'][oppositeColor], gameState['vitals']['pieces']):
-            gameState['status'] = f'{color} checkmates {oppositeColor}'
+            gameState['status'] = CHECKMATE
         else:
-            gameState['status'] = f'{color} stalemates {oppositeColor}'
+            gameState['status'] = STALEMATE
         return
-
-
-####################
-# Testing/debugging:
-####################
-
-from collections import defaultdict
-import random
-from tqdm import tqdm
-import time
-
-symbols = {
-    0: ' ', -1: '♟', -2: '♜', -3: '♞', -4: '♝', -5: '♛', -6: '♚', 
-    1: '♙', 2: '♖', 3: '♘', 4: '♗', 5: '♕', 6: '♔'
-}
-
-def displayBoard(featureVector):
-    boardMatrix = [[0] * 8 for i in range(8)]
-    for i in range(64):
-        boardMatrix[i // 8][i % 8] = symbols[featureVector[i]]
-    print(' --- --- --- --- --- --- --- --- ')
-    for i in range(8):
-        print('| ' + ' '.join(map(lambda x : f'{x} |', boardMatrix[i])))
-        print(' --- --- --- --- --- --- --- --- ')
-
-def runGames(numGames):
-    results = defaultdict(int)
-    for i in tqdm(range(numGames)):
-        gameState = getFreshGameState()
-        while True:
-            # print(gameState['Fen'])
-            # displayBoard(gameState['featureVector'])
-            # time.sleep(1.5)
-            executeMove(random.choice(tuple(gameState['legalMoves'])), gameState)
-            if gameState['status'] != 'live':
-                displayBoard(gameState['featureVector'])
-                print(gameState['status'])
-                results[gameState['status']] += 1
-                break
-    for key, value in results.items():
-        print(f'{key}: {value}')
-
-# runGames(300)
