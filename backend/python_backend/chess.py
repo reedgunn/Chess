@@ -507,6 +507,7 @@ def pawnLegalMoves(position, color, oppositeColor, pieces, kingPosition, enPassa
         promotionRowIndex = 0
     singleHopFinalPosition = (position[0] + forwardRowIndexChange, position[1])
     if isEmpty(singleHopFinalPosition, pieces):
+
         possibleSingleJumpMove = (position, singleHopFinalPosition, None, -1)
         if not doesMoveLeaveKingInCheck(possibleSingleJumpMove, color, oppositeColor, kingPosition, pieces):
             if singleHopFinalPosition[0] == promotionRowIndex:
@@ -514,6 +515,7 @@ def pawnLegalMoves(position, color, oppositeColor, pieces, kingPosition, enPassa
                     res.add((position, singleHopFinalPosition, None, pieceType))
             else:
                 res.add(possibleSingleJumpMove)
+
         if position[0] == doubleJumpStartingRowIndex:
             doubleHopFinalPosition = (position[0] + 2 * forwardRowIndexChange, position[1])
             if isEmpty(doubleHopFinalPosition, pieces):
@@ -522,6 +524,7 @@ def pawnLegalMoves(position, color, oppositeColor, pieces, kingPosition, enPassa
         if position[1] != columnIndexBound:
             captureFinalPosition = (singleHopFinalPosition[0], position[1] + columnIndexChange)
             if captureFinalPosition in pieces[oppositeColor]:
+                
                 possibleRegularCaptureMove = (position, captureFinalPosition, captureFinalPosition, -1)
                 if not doesMoveLeaveKingInCheck(possibleRegularCaptureMove, color, oppositeColor, kingPosition, pieces):
                     if captureFinalPosition[0] == promotionRowIndex:
@@ -529,6 +532,7 @@ def pawnLegalMoves(position, color, oppositeColor, pieces, kingPosition, enPassa
                             res.add((position, captureFinalPosition, captureFinalPosition, pieceType))
                     else:
                         res.add(possibleRegularCaptureMove)
+
             elif captureFinalPosition == enPassantSquare:
                 addMoveToResIfDoesntLeaveKingInCheck(res, (position, captureFinalPosition, (position[0], captureFinalPosition[1]), -1), color, oppositeColor, kingPosition, pieces)
     return res
