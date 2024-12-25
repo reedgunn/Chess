@@ -1,9 +1,9 @@
 from copy import deepcopy
 
 
-############
+#############
 # Constants:
-############
+#############
 
 ROOK = 0
 KNIGHT = 1
@@ -58,6 +58,8 @@ DRAW_BY_THREEFOLD_REPETITION = 2
 DRAW_BY_INSUFFICIENT_MATERIAL = 3
 CHECKMATE = 4
 STALEMATE = 5
+
+encodedStatusToStatus = ('live', 'draw by 50-move rule', 'draw by threefold repetition', 'draw by insufficient material', 'checkmate', 'stalemate')
 
 KINGSIDE_CASTLING_RIGHT_INDEX = 0
 QUEENSIDE_CASTLING_RIGHT_INDEX = 1
@@ -126,9 +128,9 @@ def getOppositeColor(color):
     return BLACK if color == WHITE else WHITE
 
 
-#############################################
-# Conversion from game state to FEN notation:
-#############################################
+#####################################
+# Conversion from game state to FEN:
+#####################################
 
 blackEncodedPieceToFENPiece = { PAWN: 'p', ROOK: 'r', KNIGHT: 'n', BISHOP: 'b', QUEEN: 'q', KING: 'k' }
 whiteEncodedPieceToFENPiece = { PAWN: 'P', ROOK: 'R', KNIGHT: 'N', BISHOP: 'B', QUEEN: 'Q', KING: 'K' }
@@ -159,11 +161,42 @@ def gameStateToFEN(vitals, halfmovesSinceLastCaptureOrPawnMove, moveNumber):
     castlingRights = ''
     for x in ((WHITE, 'K', 'Q'), (BLACK, 'k', 'q')):
         for y in ((KINGSIDE_CASTLING_RIGHT_INDEX, 1), (QUEENSIDE_CASTLING_RIGHT_INDEX, 2)):
-            if vitals['castlingRights'][x[0]][y[0]]:
+            if vitals['castlingRights'][x[0]][y[0]] == PRESENT:
                 castlingRights += x[y[1]]
     res += castlingRights if castlingRights else '-'
     res += f' {fenColumns[vitals['enPassantSquare'][1]]}{fenRows[vitals['enPassantSquare'][0]]} ' if vitals['enPassantSquare'] else ' - '
     res += f'{halfmovesSinceLastCaptureOrPawnMove} {moveNumber}'
+    return res
+
+
+###########################################################################
+# Conversion from FEN to feature vector (for processing imported dataset):
+###########################################################################
+
+FENPieceToEncodedPiece = { 'r': BLACK_ROOK, 'n': BLACK_KNIGHT, 'b': BLACK_BISHOP, 'q': BLACK_QUEEN, 'k': BLACK_KING, 'p': BLACK_PAWN, 'P': WHITE_PAWN, 'R': WHITE_ROOK, 'N': WHITE_KNIGHT, 'B': WHITE_BISHOP, 'Q': WHITE_QUEEN, 'K': WHITE_KING }
+FENRowToRowIndex = { '8': ROW_8, '7': ROW_7, '6': ROW_6, '5': ROW_5, '4': ROW_4, '3': ROW_3, '2': ROW_2, '1': ROW_1 }
+FENColToColIndex = { 'a': COLUMN_A, 'b': COLUMN_B, 'c': COLUMN_C, 'd': COLUMN_D, 'e': COLUMN_E, 'f': COLUMN_F, 'g': COLUMN_G, 'h': COLUMN_H }
+def FENToFeatureVector(FEN):
+    res = [EMPTY_SQUARE] * 71
+    FENBoard, FENWhoseTurnItIs, FENCastlingRights, FENEnPassantSquare = FEN.split()[:4]
+    index = 0
+    for FENBoardChar in FENBoard:
+        if FENBoardChar != '/':
+            if FENBoardChar.isdigit():
+                index += int(FENBoardChar)
+            else:
+                res[index] = FENPieceToEncodedPiece[FENBoardChar]
+                index += 1
+    res[64] = WHITE if FENWhoseTurnItIs == 'w' else BLACK
+    res[65] = PRESENT if 'K' in FENCastlingRights else ABSENT
+    res[66] = PRESENT if 'Q' in FENCastlingRights else ABSENT
+    res[67] = PRESENT if 'k' in FENCastlingRights else ABSENT
+    res[68] = PRESENT if 'q' in FENCastlingRights else ABSENT
+    if FENEnPassantSquare != '-':
+        res[69] = FENRowToRowIndex[FENEnPassantSquare[1]]
+        res[70] = FENColToColIndex[FENEnPassantSquare[0]]
+    else:
+        res[69], res[70] = NOT_APPLICABLE, NOT_APPLICABLE
     return res
 
 
@@ -655,17 +688,17 @@ def executeMove(move, gameState):
 
     # Changing castling rights (we already handled the case where we move our king)
     # If you one of your rooks for the first time, need to modify your castling rights
-    if move[0] == (castlingRowIndex, 7):
+    if move[0] == (castlingRowIndex, COLUMN_H):
         gameState['vitals']['castlingRights'][color][0] = ABSENT
         gameState['featureVector'][kingsideCastlingRightFeatureVectorIndex] = ABSENT
-    elif move[0] == (castlingRowIndex, 0):
+    elif move[0] == (castlingRowIndex, COLUMN_A):
         gameState['vitals']['castlingRights'][color][1] = ABSENT
         gameState['featureVector'][queensideCastlingRightFeatureVectorIndex] = ABSENT
     # If you capture one of your opponents rooks, possibly need to modify their castling rights
-    if move[1] == (opponentCastlingRowIndex, 0):
+    if move[1] == (opponentCastlingRowIndex, COLUMN_A):
         gameState['vitals']['castlingRights'][oppositeColor][1] = ABSENT
         gameState['featureVector'][opponentQueensideCastlingRightFeatureVectorIndex] = ABSENT
-    elif move[1] == (opponentCastlingRowIndex, 7):
+    elif move[1] == (opponentCastlingRowIndex, COLUMN_H):
         gameState['vitals']['castlingRights'][oppositeColor][0] = ABSENT
         gameState['featureVector'][opponentKingsideCastlingRightFeatureVectorIndex] = ABSENT
     
@@ -675,8 +708,8 @@ def executeMove(move, gameState):
         gameState['featureVector'][69], gameState['featureVector'][70] = newEnPassantSquareRowIndex, move[1][1]
     else:
         gameState['vitals']['enPassantSquare'] = None
-        for castlingRightIndex in {69, 70}:
-            gameState['featureVector'][castlingRightIndex] = NOT_APPLICABLE
+        for enPassantSquareFeatureVectorIndex in {69, 70}:
+            gameState['featureVector'][enPassantSquareFeatureVectorIndex] = NOT_APPLICABLE
     
     # Check for draw by threefold repetition:
     # "Two positions are by definition 'the same' if the same types of pieces occupy the same squares, the same player 

@@ -1,72 +1,110 @@
-from chess import getFreshGameState, executeMove
+from chess import getFreshGameState, executeMove, encodedStatusToStatus, BLACK
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import joblib
-import numpy as np
 from copy import deepcopy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class ChessEvaluator(nn.Module):
+    def __init__(self, input_size):
+        super(ChessEvaluator, self).__init__()
+        self.fc1 = nn.Linear(input_size, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, 1)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+model = ChessEvaluator(71)
+device = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "mps"
+    if torch.backends.mps.is_available()
+    else "cpu"
+)
+model.to(device)
+model_path = 'backend/machine_learning/chess_evaluator_state_dict.pth'
+model.load_state_dict(torch.load(model_path, map_location=device))
+model.eval()
+def modelPredict(feature_vector):
+    with torch.no_grad():
+        input_tensor = torch.tensor(feature_vector, dtype=torch.float32).unsqueeze(0).to(device)
+        output = model(input_tensor)
+        evaluation = output.item()
+    return evaluation
 
 app = Flask(__name__)
 CORS(app)
 
-# model = joblib.load('backend/machine_learning/chess_position_evaluator.pkl')
-
 gameState = getFreshGameState()
-square_selected = None
-move_suggestions = None
-square_suggestions = None
+selectedSquare = None
+suggestedSquares = None
 
-def get_evaluation_at_depth(depth, gameState):
-    if not depth:
-        return model.predict(np.array(gameState['featureVector']).reshape(1, -1))
-    move_to_eval = {}
+def setLegalMovesInitialPositionsToFinalPositionsToMoves(gameState):
+    res = dict()
     for move in gameState['legalMoves']:
-        gameState_copy = deepcopy(gameState)
-        executeMove(move, gameState_copy)
-        move_to_eval[move] = model.predict(np.array(gameState_copy['featureVector']).reshape(1, -1))
-    if gameState['featureVector'][64] == 1:
-        executeMove(max(move_to_eval, key=move_to_eval.get), gameState)
-    else:
-        executeMove(min(move_to_eval, key=move_to_eval.get), gameState)
-    return get_evaluation_at_depth(depth - 1, gameState)
+        if move[0] not in res:
+            res[move[0]] = dict()
+        res[move[0]][move[1]] = move
+    return res
 
-@app.route('/api/square-clicked', methods=['POST'])
-def square_clicked():
-    global gameState
-    global square_selected
-    global move_suggestions
-    global square_suggestions
-    move_executed = False
-    square_clicked = (request.get_json().get('row_index'), request.get_json().get('col_index'))
-    if square_selected:
-        for move_suggestion in move_suggestions:
-            if move_suggestion[1] == square_clicked:
-                executeMove(move_suggestion, gameState)
-                square_selected = None
-                move_suggestions = None
-                square_suggestions = None
-                move_executed = True
-                # if len(gameState['legalMoves']) != 0:
-                #     move_to_eval = {}
-                #     for move in gameState['legalMoves']:
-                #         gameState_copy = deepcopy(gameState)
-                #         executeMove(move, gameState_copy)
-                #         move_to_eval[move] = get_evaluation_at_depth(0, gameState_copy)
-                #     executeMove(min(move_to_eval, key=move_to_eval.get), gameState)
-                break
-    if not move_executed and square_clicked in [move[0] for move in gameState['legalMoves']]:
-        square_selected = square_clicked
-        move_suggestions = [move for move in gameState['legalMoves'] if move[0] == square_selected]
-        square_suggestions = [move[1] for move in move_suggestions]
+legalMovesInitialPositionsToFinalPositionsToMoves = setLegalMovesInitialPositionsToFinalPositionsToMoves(gameState)
+
+DEPTH = 3
+
+def getImprovedEvaluation(depth, gameState):
+    if not depth:
+        return modelPredict(gameState['featureVector'])
+    availableMoveToEvaluation = {}
+    for move in gameState['legalMoves']:
+        gameStateCopy = deepcopy(gameState)
+        executeMove(move, gameStateCopy)
+        availableMoveToEvaluation[move] = modelPredict(gameStateCopy['featureVector'])
+    if gameState['featureVector'][64] == BLACK:
+        executeMove(min(availableMoveToEvaluation, key=availableMoveToEvaluation.get), gameState)
     else:
-        square_selected = None
-        move_suggestions = None
-        square_suggestions = None
+        executeMove(max(availableMoveToEvaluation, key=availableMoveToEvaluation.get), gameState)
+    return getImprovedEvaluation(depth - 1, gameState)
+
+def executeEngineMove(depth, gameState, whoseTurnItIs):
+    availableMoveToEvaluation = {}
+    for move in gameState['legalMoves']:
+        gameStateCopy = deepcopy(gameState)
+        executeMove(move, gameStateCopy)
+        availableMoveToEvaluation[move] = getImprovedEvaluation(depth, gameStateCopy)
+    if whoseTurnItIs == BLACK:
+        executeMove(min(availableMoveToEvaluation, key=availableMoveToEvaluation.get), gameState)
+    else:
+        executeMove(max(availableMoveToEvaluation, key=availableMoveToEvaluation.get), gameState)
+
+@app.route('/api/squareClicked', methods=['POST'])
+def squareClicked():
+    global gameState
+    global selectedSquare
+    global suggestedSquares
+    global legalMovesInitialPositionsToFinalPositionsToMoves
+
+    clickedSquare = (request.get_json().get('rowIndex'), request.get_json().get('columnIndex'))
+
+    if clickedSquare in legalMovesInitialPositionsToFinalPositionsToMoves:
+        selectedSquare = clickedSquare
+        suggestedSquares = [finalPosition for finalPosition in legalMovesInitialPositionsToFinalPositionsToMoves[selectedSquare]]
+    else:
+        if selectedSquare and clickedSquare in suggestedSquares:
+            executeMove(legalMovesInitialPositionsToFinalPositionsToMoves[selectedSquare][clickedSquare], gameState)
+            executeEngineMove(DEPTH, gameState, BLACK)
+            legalMovesInitialPositionsToFinalPositionsToMoves = setLegalMovesInitialPositionsToFinalPositionsToMoves(gameState)
+        selectedSquare = None
+        suggestedSquares = None
     return jsonify({
-        'board-vector': gameState['featureVector'][:64],
-        'selected-square': square_selected,
-        'square-suggestions': square_suggestions,
-        'status': gameState['status']
+        'board': gameState['featureVector'][:64],
+        'selectedSquare': selectedSquare,
+        'suggestedSquares': suggestedSquares,
+        'status': encodedStatusToStatus[gameState['status']]
     })
 
-if __name__ == '__main__':
-    app.run(debug=True)
+app.run(debug=True)

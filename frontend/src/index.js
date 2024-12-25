@@ -20,47 +20,46 @@ function App() {
     '12': '/svgs/white-king.svg',
   };
 
-  const [boardVector, setBoardVector] = useState(null);
+  const [board, setBoard] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState([]);
-  const [squareSuggestions, setSquareSuggestions] = useState([]);
+  const [suggestedSquares, setSuggestedSquares] = useState([]);
   const [status, setStatus] = useState([]);
 
-  const squareClicked = async (row_index, col_index) => {
-    const response = await axios.post('http://localhost:5000/api/square-clicked', { row_index, col_index });
-    setBoardVector(response.data['board-vector']);
-    setSelectedSquare(response.data['selected-square']);
-    setSquareSuggestions(response.data['square-suggestions']);
+  const squareClicked = async (rowIndex, columnIndex) => {
+    const response = await axios.post('http://localhost:5000/api/squareClicked', { rowIndex, columnIndex });
+    setBoard(response.data['board']);
+    setSelectedSquare(response.data['selectedSquare']);
+    setSuggestedSquares(response.data['suggestedSquares']);
     setStatus(response.data['status']);
   };
   
   useEffect(() => {
-    squareClicked(-1, -1);
+    squareClicked(3, 4);
   }, []);
 
-  if (!boardVector || boardVector.length === 0) {
+  if (!board || board.length === 0) {
     return <div>Loading...</div>;
   }
 
-  else if (status != 0) {
+  else if (status != 'live') {
     return <div>{status}</div>;
   }
-
 
   const squares = [];
 
   for (let i = 0; i < 64; i++) {
     const isLight = (Math.floor(i / 8) + i % 8) % 2 == 0;
     const isSelected = selectedSquare && selectedSquare[0] == Math.floor(i / 8) && selectedSquare[1] == i % 8;
-    const isSuggested = squareSuggestions && squareSuggestions.some(value => value[0] == Math.floor(i / 8) && value[1] == i % 8);
+    const isSuggested = suggestedSquares && suggestedSquares.some(value => value[0] == Math.floor(i / 8) && value[1] == i % 8);
 
     squares.push(
       <div 
         key={`${i}`}
-        className={`square ${isLight ? 'light' : 'dark'}${isSuggested ? ' suggestion' : ''}${isSelected ? ' selected' : ''}`}
+        className={`square${isLight ? ' light' : ' dark'}${isSuggested ? ' suggestion' : ''}${isSelected ? ' selected' : ''}`}
         onClick={() => squareClicked(Math.floor(i / 8), i % 8)}
       >
-        {boardVector[i] != 6 && (
-          <img className='piece' src={pieceToSVG[boardVector[i]]}/>
+        {board[i] != 6 && (
+          <img className='piece' src={pieceToSVG[board[i]]}/>
         )}
       </div>
     );

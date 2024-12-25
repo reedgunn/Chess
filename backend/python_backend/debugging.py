@@ -73,3 +73,8 @@ print(f"Average number of halfmoves from {numberOfGames} games: {averageNumberOf
 
 
 # The average number of halfmoves of a completely random chess game might be about 340.
+
+
+
+# Consider collecting data like stats about each individual piece (how
+# many moves it makes, how long it survives, what typically captures it)
