@@ -64,7 +64,6 @@ encodedStatusToStatus = ('live', 'draw by 50-move rule', 'draw by threefold repe
 KINGSIDE_CASTLING_RIGHT_INDEX = 0
 QUEENSIDE_CASTLING_RIGHT_INDEX = 1
 
-
 # 'freshGameState' is to be deepcopied for every new game
 freshGameState = {
     # 'vitals' contains only all of the information that is relevant when deciding what move to make
