@@ -2,6 +2,6 @@
 __pycache__
 *.pth
 *.csv
-*.txt
 sandbox.py
 *.svg
+chess.py
