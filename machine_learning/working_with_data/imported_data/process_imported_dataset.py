@@ -1,12 +1,12 @@
 import sys
-sys.path.append('backend/python_backend')
+sys.path.append('')
 from chess import FENToFeatureVector
 
 import pandas as pd
 from tqdm import tqdm
 
 print('Reading the imported .csv file...')
-df = pd.read_csv('backend/machine_learning/imported_data/chessData.csv', nrows=100)
+df = pd.read_csv('machine_learning/working_with_data/imported_data/chessData.csv', nrows=100)
 
 tqdm.pandas()
 
@@ -21,4 +21,4 @@ df['FEN'] = df['FEN'].progress_apply(FENToFeatureVector)
 df.rename(columns={'FEN': 'FeatureVector'}, inplace=True)
 
 print('Exporting data to \'processed_imported_dataset.csv\'...')
-df.to_csv('backend/machine_learning/imported_data/processed_imported_dataset.csv', sep=';', index=False)
+df.to_csv('machine_learning/working_with_data/imported_data/processed_imported_dataset.csv', sep=';', index=False)

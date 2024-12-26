@@ -1,9 +1,10 @@
-from chess import getFreshGameState, executeMove, encodedStatusToStatus, BLACK
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 import sys
+sys.path.append('')
+from chess import getFreshGameState, executeMove, encodedStatusToStatus, BLACK
 sys.path.append('machine_learning')
 from engine import executeEngineMove
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 
 app = Flask(__name__)

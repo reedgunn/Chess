@@ -26,7 +26,7 @@ device = (
 )
 
 model.to(device)
-model_path = 'backend/machine_learning/chess_evaluator_state_dict.pth'
+model_path = 'machine_learning/creating_model/chess_evaluator_state_dict.pth'
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 

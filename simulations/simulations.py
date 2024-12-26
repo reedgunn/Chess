@@ -1,3 +1,5 @@
+import sys
+sys.path.append('')
 import chess
 import random
 from tqdm import tqdm
@@ -32,7 +34,7 @@ def simulateRandomGames(numberOfGames):
 
 
 
-numberOfGames = 3_000
+numberOfGames = 30
 averageNumberOfHalfmoves = simulateRandomGames(numberOfGames)
 
 print(f"Average number of halfmoves from {numberOfGames} games: {averageNumberOfHalfmoves}")

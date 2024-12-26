@@ -12,10 +12,10 @@ from sklearn.model_selection import train_test_split
 
 print("Step 1: Reading and parsing the CSV file...")
 
-csv_file = 'backend/machine_learning/imported_data/processed_imported_dataset.csv'
+csv_file = 'machine_learning/working_with_data/imported_data/processed_imported_dataset.csv'
 
 # We expect two columns: "FeatureVector" (string) and "Evaluation" (numeric)
-df = pd.read_csv(csv_file, sep=';', nrows=1_000_000)  # use ; as the delimiter
+df = pd.read_csv(csv_file, sep=';', nrows=1_000)  # use ; as the delimiter
 
 # df['FeatureVector'] will be strings like "[0, 1, 2, ..., -1, -1]"
 # We need to parse them into lists of integers.
@@ -143,7 +143,7 @@ print(f"Test MSE Loss: {test_loss:.4f}")
 print("\nStep 7: Saving the model for later use...")
 
 # Save just the state dictionary (weights) — recommended best practice:
-torch.save(model.state_dict(), 'backend/machine_learning/chess_evaluator_state_dict.pth')
+torch.save(model.state_dict(), 'machine_learning/creating_model/chess_evaluator_state_dict.pth')
 
 # Alternatively, save the entire model if you prefer:
 # torch.save(model, 'chess_evaluator_full_model.pth')

@@ -1,3 +1,5 @@
+import sys
+sys.path.append('')
 import chess
 from collections import defaultdict
 import random

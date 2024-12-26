@@ -1,5 +1,5 @@
 import sys
-sys.path.append('backend/python_backend')
+sys.path.append('')
 from chess import getFreshGameState, executeMove, LIVE
 import random
 from tqdm import tqdm
@@ -31,7 +31,7 @@ maximumNumberOfHalfmoves = 114
 print(f"Running {numberOfGames} random chess games cut off at {maximumNumberOfHalfmoves} halfmoves and collecting and having Stockfish give an evaluation at depth {stockfishDepth} for every position achieved...")
 simulateRandomGames(numberOfGames, featureVectorToEvaluation, maximumNumberOfHalfmoves)
 
-with open('backend/machine_learning/generated_data/generated_dataset.csv', mode='w', newline='') as file:
+with open('machine_learning/working_with_data/generated_data/generated_dataset.csv', mode='w', newline='') as file:
     writer = csv.writer(file, delimiter=';')
     writer.writerow(['FeatureVector', 'Evaluation'])
     for featureVector, evaluation in featureVectorToEvaluation.items():
