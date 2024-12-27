@@ -4,4 +4,3 @@ __pycache__
 *.csv
 sandbox.py
 *.svg
-chess.py
