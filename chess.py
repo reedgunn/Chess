@@ -1,68 +1,85 @@
 from copy import deepcopy
 
 
-#############
+###################
 # Constants:
-#############
+###################
 
-ROOK = 0
-KNIGHT = 1
-BISHOP = 2
-QUEEN = 3
-KING = 4
-PAWN = 5
+(
+    ROOK,
+    KNIGHT,
+    BISHOP,
+    QUEEN,
+    KING,
+    PAWN
+) = range(6)
 
-BLACK_ROOK = 0
-BLACK_KNIGHT = 1
-BLACK_BISHOP = 2
-BLACK_QUEEN = 3
-BLACK_KING = 4
-BLACK_PAWN = 5
-EMPTY_SQUARE = 6
-WHITE_PAWN = 7
-WHITE_ROOK = 8
-WHITE_KNIGHT = 9
-WHITE_BISHOP = 10
-WHITE_QUEEN = 11
-WHITE_KING = 12
+(
+    BLACK_ROOK,
+    BLACK_KNIGHT,
+    BLACK_BISHOP,
+    BLACK_QUEEN,
+    BLACK_KING,
+    BLACK_PAWN,
+    EMPTY_SQUARE,
+    WHITE_PAWN,
+    WHITE_ROOK,
+    WHITE_KNIGHT,
+    WHITE_BISHOP,
+    WHITE_QUEEN,
+    WHITE_KING
+) = range(13)
 
-NOT_APPLICABLE = -1
 
-WHITE = 0
-BLACK = 1
+NA = -1
 
-PRESENT = 0
-ABSENT = 1
+(
+    WHITE,
+    BLACK
+) = range(2)
 
-ROW_8 = 0
-ROW_7 = 1
-ROW_6 = 2
-ROW_5 = 3
-ROW_4 = 4
-ROW_3 = 5
-ROW_2 = 6
-ROW_1 = 7
+(
+    PRESENT,
+    ABSENT
+) = range(2)
 
-COLUMN_A = 0
-COLUMN_B = 1
-COLUMN_C = 2
-COLUMN_D = 3
-COLUMN_E = 4
-COLUMN_F = 5
-COLUMN_G = 6
-COLUMN_H = 7
+(
+    ROW_8,
+    ROW_7,
+    ROW_6,
+    ROW_5,
+    ROW_4,
+    ROW_3,
+    ROW_2,
+    ROW_1
+) = range(8)
 
-LIVE = 0
-DRAW_BY_50_MOVE_RULE = 1
-DRAW_BY_THREEFOLD_REPETITION = 2
-DRAW_BY_INSUFFICIENT_MATERIAL = 3
-CHECKMATE = 4
-STALEMATE = 5
+(
+    COLUMN_A,
+    COLUMN_B,
+    COLUMN_C,
+    COLUMN_D,
+    COLUMN_E,
+    COLUMN_F,
+    COLUMN_G,
+    COLUMN_H
+) = range(8)
+
+(
+    LIVE,
+    DRAW_BY_50_MOVE_RULE,
+    DRAW_BY_THREEFOLD_REPETITION,
+    DRAW_BY_INSUFFICIENT_MATERIAL,
+    CHECKMATE,
+    STALEMATE
+) = range(6)
 
 encodedStatusToStatus = ('live', 'draw by 50-move rule', 'draw by threefold repetition', 'draw by insufficient material', 'checkmate', 'stalemate')
 
-KINGSIDE_CASTLING_RIGHT_INDEX = 0
-QUEENSIDE_CASTLING_RIGHT_INDEX = 1
+(
+    KINGSIDE_CASTLING_RIGHT_INDEX,
+    QUEENSIDE_CASTLING_RIGHT_INDEX
+) = range(2)
 
 # 'freshGameState' is to be deepcopied for every new game
 freshGameState = {
@@ -111,9 +128,9 @@ freshGameState = {
         # Castling rights: white kingside (65), white queenside (66), black kingside (67), black queenside (68):
         PRESENT, PRESENT, PRESENT, PRESENT,
         # En passant square position: row index (69), column index (70):
-        NOT_APPLICABLE, NOT_APPLICABLE
+        NA, NA
     ],
-    'vitalssSinceLastCaptureOrPawnMove': {(BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK, WHITE, PRESENT, PRESENT, PRESENT, PRESENT, NOT_APPLICABLE, NOT_APPLICABLE): 1},
+    'vitalssSinceLastCaptureOrPawnMove': {(BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, EMPTY_SQUARE, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK, WHITE, PRESENT, PRESENT, PRESENT, PRESENT, NA, NA): 1},
     'halfmovesSinceLastCaptureOrPawnMove': 0,
     'legalMoves': [((6, 6), (4, 6), None, -1), ((6, 2), (5, 2), None, -1), ((7, 6), (5, 5), None, -1), ((6, 6), (5, 6), None, -1), ((6, 1), (4, 1), None, -1), ((6, 3), (5, 3), None, -1), ((7, 6), (5, 7), None, -1), ((6, 2), (4, 2), None, -1), ((6, 3), (4, 3), None, -1), ((6, 7), (4, 7), None, -1), ((6, 5), (5, 5), None, -1), ((7, 1), (5, 0), None, -1), ((6, 7), (5, 7), None, -1), ((6, 0), (4, 0), None, -1), ((6, 1), (5, 1), None, -1), ((6, 4), (4, 4), None, -1), ((6, 0), (5, 0), None, -1), ((7, 1), (5, 2), None, -1), ((6, 5), (4, 5), None, -1), ((6, 4), (5, 4), None, -1)],
     'status': LIVE,
@@ -156,14 +173,14 @@ def gameStateToFEN(vitals, halfmovesSinceLastCaptureOrPawnMove, moveNumber):
             res += str(emptySquaresCount)
         if rowIndex != 7:
             res += '/'
-    res += f' {encodedColorToFENColor[vitals['whoseTurnItIs']]} '
+    res += f" {encodedColorToFENColor[vitals['whoseTurnItIs']]} "
     castlingRights = ''
     for x in ((WHITE, 'K', 'Q'), (BLACK, 'k', 'q')):
         for y in ((KINGSIDE_CASTLING_RIGHT_INDEX, 1), (QUEENSIDE_CASTLING_RIGHT_INDEX, 2)):
             if vitals['castlingRights'][x[0]][y[0]] == PRESENT:
                 castlingRights += x[y[1]]
     res += castlingRights if castlingRights else '-'
-    res += f' {fenColumns[vitals['enPassantSquare'][1]]}{fenRows[vitals['enPassantSquare'][0]]} ' if vitals['enPassantSquare'] else ' - '
+    res += f" {fenColumns[vitals['enPassantSquare'][1]]}{fenRows[vitals['enPassantSquare'][0]]} " if vitals['enPassantSquare'] else ' - '
     res += f'{halfmovesSinceLastCaptureOrPawnMove} {moveNumber}'
     return res
 
@@ -195,7 +212,7 @@ def FENToFeatureVector(FEN):
         res[69] = FENRowToRowIndex[FENEnPassantSquare[1]]
         res[70] = FENColToColIndex[FENEnPassantSquare[0]]
     else:
-        res[69], res[70] = NOT_APPLICABLE, NOT_APPLICABLE
+        res[69], res[70] = NA, NA
     return res
 
 
@@ -708,7 +725,7 @@ def executeMove(move, gameState):
     else:
         gameState['vitals']['enPassantSquare'] = None
         for enPassantSquareFeatureVectorIndex in {69, 70}:
-            gameState['featureVector'][enPassantSquareFeatureVectorIndex] = NOT_APPLICABLE
+            gameState['featureVector'][enPassantSquareFeatureVectorIndex] = NA
     
     # Check for draw by threefold repetition:
     # "Two positions are by definition 'the same' if the same types of pieces occupy the same squares, the same player 

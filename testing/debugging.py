@@ -26,13 +26,15 @@ def runGames(numGames):
         gameState = chess.getFreshGameState()
         while True:
             # print(gameState['FEN'])
-            # displayBoard(gameState['featureVector'])
-            # time.sleep(1.5)
+            displayBoard(gameState['featureVector'])
+            time.sleep(1.5)
             chess.executeMove(random.choice(tuple(gameState['legalMoves'])), gameState)
             if gameState['status'] != chess.LIVE:
-                # displayBoard(gameState['featureVector'])
-                # print(gameState['status'])
+                displayBoard(gameState['featureVector'])
+                print(gameState['status'])
                 results[gameState['status']] += 1
                 break
     for key, value in results.items():
         print(f'{key}: {value}')
+
+runGames(int(1e5))

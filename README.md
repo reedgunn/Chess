@@ -1,1 +1,1 @@
-Creating a chess engine from scratch.
+Creating a chess engine from scratch using Python.
