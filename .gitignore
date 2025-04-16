@@ -2,5 +2,5 @@
 __pycache__
 *.pth
 *.csv
-sandbox.py
 *.svg
+sandbox.py
