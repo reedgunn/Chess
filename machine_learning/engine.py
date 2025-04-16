@@ -1,3 +1,8 @@
+import sys
+sys.path.append('')
+from chess import executeMove, BLACK
+from copy import deepcopy
+
 def getImprovedEvaluation(depth, gameState):
     if not depth:
         return modelPredict(gameState['featureVector'])
