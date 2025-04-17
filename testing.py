@@ -1,11 +1,8 @@
-import sys
-sys.path.append('')
-import chess
+from chess import getFreshGameState, executeMove, LIVE
 from collections import defaultdict
 import random
 from tqdm import tqdm
 import time
-
 
 symbols = {
     6: ' ', 5: '♟', 1: '♞', 2: '♝', 0: '♜', 3: '♛', 4: '♚', 
@@ -23,13 +20,13 @@ def displayBoard(featureVector):
 def runGames(numGames):
     results = defaultdict(int)
     for i in tqdm(range(numGames)):
-        gameState = chess.getFreshGameState()
+        gameState = getFreshGameState()
         while True:
             # print(gameState['FEN'])
             displayBoard(gameState['featureVector'])
             time.sleep(1.5)
-            chess.executeMove(random.choice(tuple(gameState['legalMoves'])), gameState)
-            if gameState['status'] != chess.LIVE:
+            executeMove(random.choice(tuple(gameState['legalMoves'])), gameState)
+            if gameState['status'] != LIVE:
                 displayBoard(gameState['featureVector'])
                 print(gameState['status'])
                 results[gameState['status']] += 1

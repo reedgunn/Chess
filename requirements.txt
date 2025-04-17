@@ -1,3 +1,5 @@
 stockfish
 tqdm
 pandas
+scikit-learn
+joblib

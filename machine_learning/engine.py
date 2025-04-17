@@ -2,6 +2,14 @@ import sys
 sys.path.append('')
 from chess import executeMove, BLACK
 from copy import deepcopy
+import joblib
+import numpy as np
+
+loaded_model = joblib.load('machine_learning/creating_model/chess_evaluation_model.joblib')
+
+def modelPredict(feature_vector):
+    return loaded_model.predict(feature_vector)
+
 
 def getImprovedEvaluation(depth, gameState):
     if not depth:
